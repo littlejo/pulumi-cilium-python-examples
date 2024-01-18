@@ -3,9 +3,9 @@ import littlejo_cilium as cilium
 
 example_install = cilium.Install("exampleInstall",
     sets=[
-        "cluster.name=clustermesh1",
-        "cluster.id=1",
         "ipam.mode=kubernetes",
+        "ipam.operator.replicas=1",
+        "tunnel=vxlan",
     ],
     version="1.14.5")
 
