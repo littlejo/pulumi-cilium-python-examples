@@ -1,5 +1,6 @@
 import pulumi
 import littlejo_cilium as cilium
+from pulumi_command import local
 
 kind = local.Command("kindCluster",
     create="kind create cluster --config kind.yaml --name pulumi"
