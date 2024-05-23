@@ -33,11 +33,16 @@ def combinlist(seq, k):
         i += 1
     return p
 
+config = pulumi.Config()
+try:
+    cluster_number = int(config.require("clusterNumber"))
+except:
+    cluster_number = 3
 kind_list = []
 c = []
 cmesh_connect = []
 
-cluster_ids = list(range(1, 4))
+cluster_ids = list(range(1, cluster_number+1))
 combi = combinlist(cluster_ids, 2)
 
 for i in cluster_ids:
