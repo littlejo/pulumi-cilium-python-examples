@@ -2,38 +2,57 @@ import pulumi
 import littlejo_cilium as cilium
 from pulumi_command import local
 
-kind = local.Command("kindCluster",
-    create="kind create cluster --config kind.yaml --name cmesh1"
-)
+def cilium_clustermesh(i, kind):
+    cmesh_provider = cilium.Provider(f"cmesh{i}", context=f"kind-cmesh{i}", opts=pulumi.ResourceOptions(depends_on=kind))
+    cmesh_cilium = cilium.Install(f"cmesh{i}Install",
+        sets=[
+            f"cluster.name=cmesh{i}",
+            f"cluster.id={i}",
+            "ipam.mode=kubernetes",
+        ],
+        version="1.15.5",
+        opts=pulumi.ResourceOptions(depends_on=kind, providers=[cmesh_provider]),
+    )
+    return {
+      "cmesh": cilium.Clustermesh(f"cmesh{i}Enable", service_type="NodePort", opts=pulumi.ResourceOptions(depends_on=[cmesh_cilium], providers=[cmesh_provider])),
+      "provider": cmesh_provider,
+    }
 
-kind2 = local.Command("kindCluster2",
-    create="kind create cluster --config kind-2.yaml --name cmesh2"
-)
+def combinlist(seq, k):
+    p = []
+    i, imax = 0, 2**len(seq)-1
+    while i<=imax:
+        s = []
+        j, jmax = 0, len(seq)-1
+        while j<=jmax:
+            if (i>>j)&1==1:
+                s.append(seq[j])
+            j += 1
+        if len(s)==k:
+            p.append(s)
+        i += 1
+    return p
 
-cmesh1_provider = cilium.Provider("cmesh1", context="kind-cmesh1", opts=pulumi.ResourceOptions(depends_on=[kind]))
-cmesh2_provider = cilium.Provider("cmesh2", context="kind-cmesh2", opts=pulumi.ResourceOptions(depends_on=[kind2]))
+kind_list = []
+c = []
 
-cmesh1_cilium = cilium.Install("cmesh1Install",
-    sets=[
-        "cluster.name=cmesh1",
-        "cluster.id=1",
-        "ipam.mode=kubernetes",
-    ],
-    version="1.15.5",
-    opts=pulumi.ResourceOptions(depends_on=[kind], providers=[cmesh1_provider]),
-)
+cluster_ids = list(range(1, 4))
 
-cmesh2_cilium = cilium.Install("cmesh2Install",
-    sets=[
-        "cluster.name=cmesh2",
-        "cluster.id=2",
-        "ipam.mode=kubernetes",
-    ],
-    version="1.15.5",
-    opts=pulumi.ResourceOptions(depends_on=[kind2], providers=[cmesh2_provider]),
-)
+for i in cluster_ids:
+    kind_list += [local.Command(f"kindCluster-{i}",
+        create=f"kind create cluster --config kind-{i}.yaml --name cmesh{i}",
+        delete=f"kind delete clusters cmesh{i}",
+    )]
 
-cmesh1_cmeshenable = cilium.Clustermesh("cmesh1Enable", service_type="NodePort", opts=pulumi.ResourceOptions(depends_on=[cmesh1_cilium], providers=[cmesh1_provider]))
-cmesh2_cmeshenable = cilium.Clustermesh("cmesh2Enable", service_type="NodePort", opts=pulumi.ResourceOptions(depends_on=[cmesh2_cilium], providers=[cmesh2_provider]))
+for i in cluster_ids:
+    c += [cilium_clustermesh(i, kind_list)]
 
-cilium.ClustermeshConnection("cmeshConnect", destination_context="kind-cmesh2", opts=pulumi.ResourceOptions(depends_on=[cmesh1_cmeshenable], providers=[cmesh1_provider]))
+cmesh_connect = []
+
+combi = combinlist(cluster_ids, 2)
+k = 0
+
+for i, j in combi:
+    depends_on = [c[j-1]['cmesh']] + cmesh_connect
+    cmesh_connect += [cilium.ClustermeshConnection(f"cmeshConnect-{k}", destination_context=f"kind-cmesh{i}", opts=pulumi.ResourceOptions(depends_on=depends_on, providers=[c[j-1]['provider']]))]
+    k += 1
