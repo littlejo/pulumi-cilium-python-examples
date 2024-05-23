@@ -4,5 +4,5 @@ nodes:
 - role: control-plane
 networking:
   disableDefaultCNI: true
-  podSubnet: "10.2.0.0/16"
-  serviceSubnet: "172.20.2.0/24"
+  podSubnet: "10.NUMBER.0.0/16"
+  serviceSubnet: "172.20.NUMBER.0/24"

@@ -35,21 +35,21 @@ def combinlist(seq, k):
 
 kind_list = []
 c = []
+cmesh_connect = []
 
 cluster_ids = list(range(1, 4))
+combi = combinlist(cluster_ids, 2)
 
 for i in cluster_ids:
     kind_list += [local.Command(f"kindCluster-{i}",
-        create=f"kind create cluster --config kind-{i}.yaml --name cmesh{i}",
-        delete=f"kind delete clusters cmesh{i}",
+        create=f"sed 's/NUMBER/{i}/g' kind.yaml.template > kind-{i}.yaml && kind create cluster --config kind-{i}.yaml --name cmesh{i}",
+        delete=f"kind delete clusters cmesh{i} && rm kind-{i}.yaml",
     )]
 
 for i in cluster_ids:
     c += [cilium_clustermesh(i, kind_list)]
 
-cmesh_connect = []
 
-combi = combinlist(cluster_ids, 2)
 k = 0
 
 for i, j in combi:
