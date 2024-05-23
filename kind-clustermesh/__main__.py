@@ -10,8 +10,8 @@ kind2 = local.Command("kindCluster2",
     create="kind create cluster --config kind-2.yaml --name cmesh2"
 )
 
-cmesh1_provider = cilium.Provider("cmesh1", context="kind-cmesh1")
-cmesh2_provider = cilium.Provider("cmesh2", context="kind-cmesh2")
+cmesh1_provider = cilium.Provider("cmesh1", context="kind-cmesh1", opts=pulumi.ResourceOptions(depends_on=[kind]))
+cmesh2_provider = cilium.Provider("cmesh2", context="kind-cmesh2", opts=pulumi.ResourceOptions(depends_on=[kind2]))
 
 cmesh1_cilium = cilium.Install("cmesh1Install",
     sets=[
