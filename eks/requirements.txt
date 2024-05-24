@@ -1,0 +1,3 @@
+pulumi>=3
+pulumi_eks>=1.0.3
+littlejo_cilium
