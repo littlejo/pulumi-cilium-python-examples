@@ -1,0 +1,5 @@
+pulumi>=3.0.0,<4.0.0
+pulumi_eks>=1.0.3
+pulumi_awsx>=2.10.0
+littlejo_cilium
+pulumi-command
