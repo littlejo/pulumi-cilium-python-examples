@@ -1,7 +1,7 @@
 name: Pulumi
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
-  CLUSTER_NUMBER: "7"
+  CLUSTER_NUMBER: "10"
 on:
   push:
     branches:
@@ -33,6 +33,13 @@ jobs:
       - uses: pulumi/actions@v5
         with:
           work-dir: ./kind-clustermesh
+
+      - name: Clean disk
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
       - name: Create stack
         run: pulumi login --local && pulumi stack init dev && pulumi config set --stack dev clusterNumber $CLUSTER_NUMBER
