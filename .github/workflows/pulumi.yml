@@ -1,0 +1,63 @@
+name: Pulumi
+env:
+  PULUMI_CONFIG_PASSPHRASE: ""
+  CLUSTER_NUMBER: "3"
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths-ignore:
+      - '*/README.md'
+jobs:
+  kind-clustermesh:
+    name: Cluster Mesh Kind
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./kind-clustermesh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cilium/cilium-cli@4892ceb1abbc1f7d8bb5c7f9160ec56717c3c32c
+        with:
+          skip-build: true
+          release-version: v0.16.10
+      - name: Setup Python ✨
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Installing dependencies 📦️
+        run: pip install -r requirements.txt
+
+      - uses: pulumi/actions@v5
+        with:
+          work-dir: ./kind-clustermesh
+
+      - name: Create stack
+        run: pulumi login --local && pulumi stack init dev && pulumi config set --stack dev clusterNumber $CLUSTER_NUMBER
+
+      - uses: pulumi/actions@v5
+        with:
+          work-dir: ./kind-clustermesh
+          command: up
+          stack-name: dev
+          cloud-url: file://~
+
+      - name: Check Cluster Mesh
+        run: |
+          for i in $(seq 1 $CLUSTER_NUMBER)
+          do
+            echo "Cluster: kind-cmesh$i"
+            cilium status --context=kind-cmesh$i --wait
+            cilium clustermesh status --context=kind-cmesh$i --wait
+          done
+            echo "Cluster Connectivity test kind-cmesh1 and kind-cmesh2"
+          cilium connectivity test --context kind-cmesh1 --multi-cluster kind-cmesh2
+
+      - uses: pulumi/actions@v5
+        with:
+          work-dir: ./kind-clustermesh
+          command: destroy
+          stack-name: dev
+          cloud-url: file://~
