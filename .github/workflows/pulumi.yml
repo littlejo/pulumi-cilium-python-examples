@@ -1,7 +1,7 @@
 name: Pulumi
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
-  CLUSTER_NUMBER: "5"
+  CLUSTER_NUMBER: "15"
 on:
   push:
     branches:
