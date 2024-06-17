@@ -50,8 +50,7 @@ jobs:
           command: up
           stack-name: dev
           cloud-url: file://~
-          options:
-            parallel: 2
+          parallel: 2
 
       - name: Check Cluster Mesh
         run: |
