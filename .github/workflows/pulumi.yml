@@ -1,7 +1,7 @@
 name: Pulumi
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
-  CLUSTER_NUMBER: "14"
+  CLUSTER_NUMBER: "20"
 on:
   push:
     branches:
@@ -50,7 +50,7 @@ jobs:
           command: up
           stack-name: dev
           cloud-url: file://~
-          parallel: 2
+          parallel: 10
 
       - name: Check Cluster Mesh
         run: |
