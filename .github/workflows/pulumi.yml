@@ -34,8 +34,11 @@ jobs:
         run: |
           for i in $(seq 1 $CLUSTER_NUMBER)
           do
+            echo "cmesh$i"
             sed "s/NUMBER/$i/g" kind.yaml.template > kind-$i.yaml 
             kind create cluster --config kind-$i.yaml --name cmesh$i
+            free -h
+            uptime
           done
 
       - name: Check Cluster Mesh
