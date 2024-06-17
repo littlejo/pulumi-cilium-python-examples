@@ -34,7 +34,7 @@ jobs:
         run: |
           for i in $(seq 1 $CLUSTER_NUMBER)
           do
-            sed "s/NUMBER/$i/g" kind.yaml.template > kind-{i}.yaml 
+            sed "s/NUMBER/$i/g" kind.yaml.template > kind-$i.yaml 
             kind create cluster --config kind-$i.yaml --name cmesh$i
           done
 
