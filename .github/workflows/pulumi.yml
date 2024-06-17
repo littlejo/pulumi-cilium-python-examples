@@ -22,17 +22,6 @@ jobs:
         with:
           skip-build: true
           release-version: v0.16.10
-      - name: Setup Python ✨
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.11
-
-      - name: Installing dependencies 📦️
-        run: pip install -r requirements.txt
-
-      - uses: pulumi/actions@v5
-        with:
-          work-dir: ./kind-clustermesh
 
       - name: Clean disk
         run: |
@@ -41,15 +30,13 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
-      - name: Create stack
-        run: pulumi login --local && pulumi stack init dev && pulumi config set --stack dev clusterNumber $CLUSTER_NUMBER
-
-      - uses: pulumi/actions@v5
-        with:
-          work-dir: ./kind-clustermesh
-          command: up
-          stack-name: dev
-          cloud-url: file://~
+      - name: kind deployment
+        run: |
+          for i in $(seq 1 $CLUSTER_NUMBER)
+          do
+            sed "s/NUMBER/$i/g" kind.yaml.template > kind-{i}.yaml 
+            kind create cluster --config kind-$i.yaml --name cmesh$i
+          done
 
       - name: Check Cluster Mesh
         run: |
@@ -61,10 +48,3 @@ jobs:
           done
             echo "Cluster Connectivity test kind-cmesh1 and kind-cmesh2"
           cilium connectivity test --context kind-cmesh1 --multi-cluster kind-cmesh2
-
-      - uses: pulumi/actions@v5
-        with:
-          work-dir: ./kind-clustermesh
-          command: destroy
-          stack-name: dev
-          cloud-url: file://~
