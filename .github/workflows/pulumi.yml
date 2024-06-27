@@ -18,7 +18,7 @@ jobs:
         working-directory: ./kind-clustermesh
     steps:
       - uses: actions/checkout@v4
-      - uses: cilium/cilium-cli@4892ceb1abbc1f7d8bb5c7f9160ec56717c3c32c
+      - uses: cilium/cilium-cli@404d52692f62eebb7211fdacd114848995ada1b7
         with:
           skip-build: true
           release-version: v0.16.10
