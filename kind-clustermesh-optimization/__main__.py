@@ -44,7 +44,6 @@ def combi_optimization(connections_list):
                connections_list.remove(i)
            res += [intersect]
            flat_res += intersect
-        else:
     return (flat_res, res)
 
 config = pulumi.Config()
