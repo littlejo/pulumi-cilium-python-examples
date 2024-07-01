@@ -75,10 +75,11 @@ for i in cluster_ids:
 k = 0
 
 for connections in connections_list:
-    depends_on += cmesh_connect
+    command += [local.Command(f"test-{l}", create=f"ls", opts=pulumi.ResourceOptions(depends_on=[c[0]['cmesh'], c[1]['cmesh'], c[2]['cmesh']]))]
     for conn in connections:
         i = conn[0]
         j = conn[1]
         depends_on = [c[j-1]['cmesh']]
-        cmesh_connect += [cilium.ClustermeshConnection(f"cmeshConnect-{k}", destination_context=f"kind-cmesh{i}", opts=pulumi.ResourceOptions(depends_on=depends_on, providers=[c[j-1]['provider']]))]
+        cmesh_connect += [cilium.ClustermeshConnection(f"cmeshConnect-{k}", destination_context=f"kind-cmesh{i}", opts=pulumi.ResourceOptions(parent=command[l], depends_on=depends_on, providers=[c[j-1]['provider']]))]
         k += 1
+    depends_on += cmesh_connect
