@@ -54,6 +54,7 @@ except:
 kind_list = []
 c = []
 cmesh_connect = []
+depends_on = []
 
 cluster_ids = list(range(1, cluster_number+1))
 
