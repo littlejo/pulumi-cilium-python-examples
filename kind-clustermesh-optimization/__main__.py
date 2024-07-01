@@ -50,7 +50,7 @@ config = pulumi.Config()
 try:
     cluster_number = int(config.require("clusterNumber"))
 except:
-    cluster_number = 3
+    cluster_number = 4
 kind_list = []
 c = []
 cmesh_connect = []
