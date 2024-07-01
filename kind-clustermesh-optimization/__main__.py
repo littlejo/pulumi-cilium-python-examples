@@ -57,7 +57,7 @@ cmesh_connect = []
 
 cluster_ids = list(range(1, cluster_number+1))
 
-connections_list = combinlist(cluster_number_list)
+connections_list = combinlist(cluster_ids)
 connections_list_cst = connections_list[:]
 
 flat_connections_list, connections_list = combi_optimization(connections_list)
