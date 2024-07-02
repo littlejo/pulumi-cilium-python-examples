@@ -77,7 +77,7 @@ l = 0
 command = []
 
 for connections in connections_list:
-    command += [local.Command(f"test-{l}", create=f"ls", opts=pulumi.ResourceOptions(depends_on=[c[0]['cmesh'], c[1]['cmesh'], c[2]['cmesh']]))]
+    command += [local.Command(f"test-{l}", create=f"ls", opts=pulumi.ResourceOptions(depends_on=[c[0]['cmesh'], c[1]['cmesh'], c[2]['cmesh'], command]))]
     for conn in connections:
         i = conn[0]
         j = conn[1]
