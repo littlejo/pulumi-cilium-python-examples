@@ -1,0 +1,6 @@
+name: project
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: install cilium using https://www.pulumi.com/registry/packages/cilium/ package
