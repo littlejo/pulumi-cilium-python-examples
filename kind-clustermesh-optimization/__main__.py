@@ -4,7 +4,7 @@ from pulumi_command import local
 import itertools
 
 def cilium_clustermesh(i, kind):
-    cmesh_provider = cilium.Provider(f"cmesh{i}", context=f"kind-cmesh{i}", opts=pulumi.ResourceOptions(depends_on=kind))
+    cmesh_provider = cilium.Provider(f"cmesh{i}", context=f"kind-cmesh{i}", opts=pulumi.ResourceOptions(depends_on=kind[i-1], parent=kind[i-1]))
     cmesh_cilium = cilium.Install(f"cmesh{i}Install",
         sets=[
             f"cluster.name=cmesh{i}",
@@ -12,10 +12,10 @@ def cilium_clustermesh(i, kind):
             "ipam.mode=kubernetes",
         ],
         version="1.15.5",
-        opts=pulumi.ResourceOptions(depends_on=kind, providers=[cmesh_provider]),
+        opts=pulumi.ResourceOptions(depends_on=kind, providers=[cmesh_provider], parent=cmesh_provider),
     )
     return {
-      "cmesh": cilium.Clustermesh(f"cmesh{i}Enable", service_type="NodePort", opts=pulumi.ResourceOptions(depends_on=[cmesh_cilium], providers=[cmesh_provider])),
+      "cmesh": cilium.Clustermesh(f"cmesh{i}Enable", service_type="NodePort", opts=pulumi.ResourceOptions(depends_on=[cmesh_cilium], providers=[cmesh_provider], parent=cmesh_cilium)),
       "provider": cmesh_provider,
     }
 
@@ -74,14 +74,14 @@ for i in cluster_ids:
 
 k = 0
 l = 0
-command = []
+null = []
 
 for connections in connections_list:
-    command += [local.Command(f"test-{l}", create=f"ls", opts=pulumi.ResourceOptions(depends_on=[a['cmesh'] for a in c] + command))]
+    null += [local.Command(f"null-{l}", create=f"echo ''", opts=pulumi.ResourceOptions(depends_on=[a['cmesh'] for a in c]))]
     for conn in connections:
         i = conn[0]
         j = conn[1]
-        cmesh_connect += [cilium.ClustermeshConnection(f"cmeshConnect-{i}-{j}", destination_context=f"kind-cmesh{i}", opts=pulumi.ResourceOptions(parent=command[l], depends_on=depends_on, providers=[c[j-1]['provider']]))]
+        cmesh_connect += [cilium.ClustermeshConnection(f"cmeshConnect-{i}-{j}", destination_context=f"kind-cmesh{i}", opts=pulumi.ResourceOptions(parent=null[l], depends_on=depends_on, providers=[c[j-1]['provider']]))]
         k += 1
-    depends_on += cmesh_connect + command
+    depends_on += cmesh_connect + null
     l += 1
