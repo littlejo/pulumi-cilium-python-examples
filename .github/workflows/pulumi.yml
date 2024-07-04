@@ -17,8 +17,10 @@ jobs:
           - ./kind-clustermesh
           - ./kind-clustermesh-optimization
         cluster_number:
-          - 4
-          - 5
+          - 6
+          - 7
+          - 8
+          - 9
     name: Cluster Mesh Kind
     runs-on: ubuntu-latest
     defaults:
@@ -69,10 +71,3 @@ jobs:
           done
             echo "Cluster Connectivity test kind-cmesh1 and kind-cmesh2"
           cilium connectivity test --context kind-cmesh1 --multi-cluster kind-cmesh2
-
-      - uses: pulumi/actions@v5
-        with:
-          work-dir: ${{ matrix.dir }}
-          command: destroy
-          stack-name: dev
-          cloud-url: file://~
