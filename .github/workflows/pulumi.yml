@@ -1,7 +1,6 @@
 name: Pulumi
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
-  CLUSTER_NUMBER: "3"
 on:
   push:
     branches:
@@ -17,6 +16,11 @@ jobs:
         dir:
           - ./kind-clustermesh
           - ./kind-clustermesh-optimization
+        cluster_number:
+          - 10
+          - 11
+          - 12
+          - 13
     name: Cluster Mesh Kind
     runs-on: ubuntu-latest
     defaults:
@@ -47,6 +51,8 @@ jobs:
 
       - name: Create stack
         run: pulumi login --local && pulumi stack init dev && pulumi config set --stack dev clusterNumber $CLUSTER_NUMBER
+        env:
+          CLUSTER_NUMBER: ${{ matrix.cluster_number }}
 
       - uses: pulumi/actions@v5
         with:
@@ -65,10 +71,3 @@ jobs:
           done
             echo "Cluster Connectivity test kind-cmesh1 and kind-cmesh2"
           cilium connectivity test --context kind-cmesh1 --multi-cluster kind-cmesh2
-
-      - uses: pulumi/actions@v5
-        with:
-          work-dir: ${{ matrix.dir }}
-          command: destroy
-          stack-name: dev
-          cloud-url: file://~
