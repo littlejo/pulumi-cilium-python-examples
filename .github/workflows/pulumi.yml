@@ -1,7 +1,6 @@
 name: Pulumi
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
-  CLUSTER_NUMBER: "3"
 on:
   push:
     branches:
@@ -17,11 +16,15 @@ jobs:
         dir:
           - ./kind-clustermesh
           - ./kind-clustermesh-optimization
+        cluster_number:
+          - 4
+          - 5
     name: Cluster Mesh Kind
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ${{ matrix.dir }}
+        CLUSTER_NUMBER: ${{ matrix.cluster_number }}
     steps:
       - uses: actions/checkout@v4
       - uses: cilium/cilium-cli@404d52692f62eebb7211fdacd114848995ada1b7
