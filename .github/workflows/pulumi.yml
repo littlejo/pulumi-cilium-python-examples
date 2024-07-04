@@ -24,7 +24,6 @@ jobs:
     defaults:
       run:
         working-directory: ${{ matrix.dir }}
-        CLUSTER_NUMBER: ${{ matrix.cluster_number }}
     steps:
       - uses: actions/checkout@v4
       - uses: cilium/cilium-cli@404d52692f62eebb7211fdacd114848995ada1b7
@@ -50,6 +49,8 @@ jobs:
 
       - name: Create stack
         run: pulumi login --local && pulumi stack init dev && pulumi config set --stack dev clusterNumber $CLUSTER_NUMBER
+        env:
+          CLUSTER_NUMBER: ${{ matrix.cluster_number }}
 
       - uses: pulumi/actions@v5
         with:
