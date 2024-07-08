@@ -1,0 +1,6 @@
+name: eks-native
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: deploy eks with aws-native provider
