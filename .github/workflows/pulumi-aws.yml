@@ -1,4 +1,4 @@
-name: Pulumi
+name: Pulumi-AWS-EKS
 on:
   workflow_dispatch:
     inputs:
