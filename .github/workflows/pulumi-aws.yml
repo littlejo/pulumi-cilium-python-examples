@@ -37,6 +37,13 @@ jobs:
       run:
         working-directory: ${{ matrix.dir }}
     steps:
+      - name: Mask AWS secret
+        run: |
+          echo "::add-mask::$AWS_ACCESS_KEY_ID"
+          echo "::add-mask::$AWS_SECRET_ACCESS_KEY"
+          echo AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID >> $GITHUB_ENV
+          echo AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY >> $GITHUB_ENV
+
       - uses: actions/checkout@v4
       - uses: cilium/cilium-cli@404d52692f62eebb7211fdacd114848995ada1b7
         with:
