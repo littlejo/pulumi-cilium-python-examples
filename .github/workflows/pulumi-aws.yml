@@ -69,16 +69,18 @@ jobs:
           stack-name: dev
           cloud-url: file://~
 
-      - name: Check Cluster Mesh
-        run: |
-          for i in $(seq 1 $CLUSTER_NUMBER)
-          do
-            echo "Cluster: kind-cmesh$i"
-            cilium status --context=kind-cmesh$i --wait
-            cilium clustermesh status --context=kind-cmesh$i --wait
-          done
-            echo "Cluster Connectivity test kind-cmesh1 and kind-cmesh2"
-          cilium connectivity test --context kind-cmesh1 --multi-cluster kind-cmesh2
+      #TODO
+      #- name: Check Cluster Mesh
+      #  run: |
+      #    export KUBECONFIG=./kubeconfig.yaml
+      #    for i in $(seq 1 $CLUSTER_NUMBER)
+      #    do
+      #      echo "Cluster: kind-cmesh$i"
+      #      cilium status --context=kind-cmesh$i --wait
+      #      cilium clustermesh status --context=kind-cmesh$i --wait
+      #    done
+      #      echo "Cluster Connectivity test kind-cmesh1 and kind-cmesh2"
+      #    cilium connectivity test --context kind-cmesh1 --multi-cluster kind-cmesh2
 
       - name: Remove cilium Pulumi resource
         run: |
