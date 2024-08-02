@@ -33,7 +33,6 @@ jobs:
           - ./eks-clustermesh-optimisation
     name: Cluster Mesh EKS
     runs-on: ubuntu-latest
-    continue-on-error: true
     defaults:
       run:
         working-directory: ${{ matrix.dir }}
