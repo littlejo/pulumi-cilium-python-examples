@@ -38,11 +38,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Mask AWS secret
         run: |
-          AWS_ACCESS_KEY_ID=${{ github.event.inputs.aws_access_id }}
-          AWS_SECRET_ACCESS_KEY=${{ github.event.inputs.aws_secret_id }}
-          echo "::add-mask::$AWS_ACCESS_KEY_ID"
+          echo "::add-mask::${{ github.event.inputs.aws_access_id }}"
           echo AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID >> $GITHUB_ENV
-          echo "::add-mask::$AWS_SECRET_ACCESS_KEY"
+          echo "::add-mask::${{ github.event.inputs.aws_secret_id }}"
           echo AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY >> $GITHUB_ENV
       - uses: cilium/cilium-cli@404d52692f62eebb7211fdacd114848995ada1b7
         with:
