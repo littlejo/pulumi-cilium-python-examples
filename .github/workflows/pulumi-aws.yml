@@ -83,6 +83,7 @@ jobs:
       #    cilium connectivity test --context kind-cmesh1 --multi-cluster kind-cmesh2
 
       - name: Remove cilium Pulumi resource
+        shell: /usr/bin/bash
         run: |
           for state in $(pulumi stack --stack dev --show-urns | grep cilium | grep URN | awk '{print $NF}')
           do
