@@ -86,7 +86,7 @@ jobs:
         run: |
           for state in $(pulumi stack --stack dev --show-urns | grep cilium | grep URN | awk '{print $NF}')
           do
-            pulumi state delete --stack dev --target-dependents '$state'
+            echo "pulumi state delete --stack dev --target-dependents '$state'" | bash
           done
 
       - uses: pulumi/actions@v5
