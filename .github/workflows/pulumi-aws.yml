@@ -44,7 +44,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Whois
-        run: curl checkip.amazonaws.com 2> /dev/null | xargs whois
+        run: |
+          sudo apt-get -y install whois
+          curl checkip.amazonaws.com 2> /dev/null | xargs whois
       - uses: cilium/cilium-cli@404d52692f62eebb7211fdacd114848995ada1b7
         with:
           skip-build: true
