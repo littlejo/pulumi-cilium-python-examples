@@ -166,7 +166,13 @@ def create_eks(name, role_arn, subnet_ids, sg_ids, version, ec2_role_arn, lt, i)
             opts=pulumi.ResourceOptions(parent=ec2)
     )
 
-    cilium_provider = cilium.Provider(f"cilium-provider-{name}", config_path=f"./kubeconfig-{name}.yaml", opts=pulumi.ResourceOptions(parent=kubeconfig_update))
+    kubeconfig_sa = local.Command(f"kubeconfig-sa-{name}",
+            create=f"bash helper/creation-kubeconfig.sh {i}",
+            delete=f"rm -f kubeconfig-sa-{i}",
+            opts=pulumi.ResourceOptions(parent=kubeconfig_update)
+    )
+
+    cilium_provider = cilium.Provider(f"cilium-provider-{name}", config_path=f"./kubeconfig-sa-{i}", opts=pulumi.ResourceOptions(parent=kubeconfig_sa))
 
     cilium_deploy = cilium.Install(f"cilium-install-{name}",
         sets=[
@@ -265,21 +271,21 @@ lt = aws_native.ec2.LaunchTemplate("lt-eks",
                    }
      )
 
-command = ""
 cmesh_list = []
+kubeconfigs = ""
 for i in cluster_ids:
     eks_cluster, cilium_cmesh = create_eks(f"eksCluster-{i}", eks_role.arn, subnets.ids, [eks_sg.group_id], kubernetes_version, ec2_role.arn, lt, i)
     cmesh_list += cilium_cmesh
-    command += f"aws eks update-kubeconfig --name eksCluster-{i} --kubeconfig kubeconfig.yaml && "
+    kubeconfigs += f"./kubeconfig-sa-{i}:"
 
-kubeconfig_update = local.Command("kubeconfig",
-        create=command[:-4],
+kubeconfig_global = local.Command("kubeconfig",
+        create="kubectl config view --raw > ./kubeconfig.yaml",
         delete=f"rm -f kubeconfig.yaml",
-        opts=pulumi.ResourceOptions(depends_on=cmesh_list)
+        environment={"KUBECONFIG": kubeconfigs},
+        opts=pulumi.ResourceOptions(depends_on=cmesh_list),
     )
 
 account_id = aws_tf.get_caller_identity().account_id
-context_arn_pre = f"arn:aws:eks:{region}:{account_id}:cluster"
 
 k = 0
 l = 0
@@ -297,8 +303,8 @@ for connections in connections_list:
     for conn in connections:
         i = conn[0]
         j = conn[1]
-        cmesh_provider = cilium.Provider(f"cilium-provider-cmesh-{k}", config_path="./kubeconfig.yaml", context=f"{context_arn_pre}/eksCluster-{j}", opts=pulumi.ResourceOptions(depends_on=kubeconfig_update, parent=null[l]))
-        cmesh_connect += [cilium.ClustermeshConnection(f"cmeshConnect-{i}-{j}", destination_context=f"{context_arn_pre}/eksCluster-{i}", opts=pulumi.ResourceOptions(parent=cmesh_provider, depends_on=depends_on, providers=[cmesh_provider]))]
+        cmesh_provider = cilium.Provider(f"cilium-provider-cmesh-{k}", config_path="./kubeconfig.yaml", context=f"eksCluster-{j}", opts=pulumi.ResourceOptions(depends_on=kubeconfig_global, parent=null[l]))
+        cmesh_connect += [cilium.ClustermeshConnection(f"cmeshConnect-{i}-{j}", destination_context=f"eksCluster-{i}", opts=pulumi.ResourceOptions(parent=cmesh_provider, depends_on=depends_on, providers=[cmesh_provider]))]
         k += 1
     depends_on += cmesh_connect + null
     l += 1
