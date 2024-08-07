@@ -1,6 +1,6 @@
 number=$1
-export KUBECONFIG=kubeconfig-eksCluster-$number.yaml
-export serviceaccount=admin-$number
+kubeconfig=$2
+serviceaccount=admin-$number
 namespace=default
 
 kubectl create sa $serviceaccount -n $namespace
@@ -24,7 +24,7 @@ cluster=eksCluster-$number
 context=$cluster
 server=$(kubectl config view -o "jsonpath={.clusters[].cluster.server}")
 
-export KUBECONFIG=./kubeconfig-sa-$number
+export KUBECONFIG=$kubeconfig
 kubectl config set-credentials $serviceaccount --token="$token" >/dev/null
 kubectl config set-cluster "$cluster" --server="$server" --certificate-authority="$ca_crt" --embed-certs >/dev/null
 kubectl config set-context "$context" --cluster="$cluster" --namespace="$namespace" --user="$serviceaccount" >/dev/null
