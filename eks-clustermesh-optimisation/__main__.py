@@ -5,6 +5,7 @@ import pulumi_aws as aws_tf
 from pulumi_command import local
 import littlejo_cilium as cilium
 import itertools
+import ipaddress
 #import base64 #TOFIX
 
 def combinlist(seq):
@@ -24,6 +25,7 @@ def combi_optimization(connections_list):
     intersect = []
     res = []
     flat_res = []
+    connections_list_cst = connections_list[:]
 
     for conn in connections_list_cst:
         if conn in connections_list:
@@ -34,9 +36,98 @@ def combi_optimization(connections_list):
            flat_res += intersect
     return (flat_res, res)
 
-class SecurityGroup:
-   def __init__(self, name, description="", ingresses=[], egresses=[], parent=None):
+def tags_format(tags_dict):
+    return [ {'key': k, 'value': v} for k, v in tags_dict.items() ]
+
+class VPC:
+   def __init__(self, name, cidr="10.0.0.0/16", azs=[], parent=None):
        self.name = name
+       self.cidr = cidr
+       self.parent = parent
+       self.create_vpc()
+       new_prefix = int(cidr.split("/")[1])+1
+       self.azs = azs
+       self.subnet_cidr = list(ipaddress.ip_network(cidr).subnets(new_prefix=new_prefix))
+
+   def create_vpc(self):
+       tags = {
+         "Name": self.name
+       }
+       self.vpc = aws_native.ec2.Vpc(
+           f"vpc-{self.name}",
+           cidr_block=self.cidr,
+           enable_dns_hostnames=True,
+           enable_dns_support=True,
+           opts=pulumi.ResourceOptions(parent=self.parent),
+           tags=tags_format(tags)
+       )
+
+   def get_vpc_id(self):
+       return self.vpc.vpc_id
+
+   def get_subnet_ids(self):
+       return [self.subnet1.subnet_id, self.subnet2.subnet_id]
+
+   def create_subnets(self):
+       tags = {
+         "Name": f"subnet-{self.name}-1"
+       }
+       self.subnet1 = aws_native.ec2.Subnet(
+           f"vpc-subnet-{self.name}-1",
+           vpc_id=self.vpc.id,
+           cidr_block=self.subnet_cidr[0].with_prefixlen,
+           availability_zone=self.azs[0],
+           opts=pulumi.ResourceOptions(parent=self.vpc),
+           map_public_ip_on_launch=True,
+           tags=tags_format(tags),
+       )
+       tags = {
+         "Name": f"subnet-{self.name}-2"
+       }
+       self.subnet2 = aws_native.ec2.Subnet(
+           f"vpc-subnet-{self.name}-2",
+           vpc_id=self.vpc.id,
+           cidr_block=self.subnet_cidr[1].with_prefixlen,
+           availability_zone=self.azs[1],
+           opts=pulumi.ResourceOptions(parent=self.vpc),
+           map_public_ip_on_launch=True,
+           tags=tags_format(tags),
+       )
+   def create_internet_gateway(self):
+       self.igw = aws_native.ec2.InternetGateway(f"vpc-igw-{self.name}",
+                                                opts=pulumi.ResourceOptions(parent=self.parent))
+       aws_native.ec2.VpcGatewayAttachment(f"vpc-igw-attachment-{self.name}",
+                                 vpc_id=self.vpc.id,
+                                 internet_gateway_id=self.igw.id,
+                                 opts=pulumi.ResourceOptions(parent=self.igw),
+                         )
+
+   def create_route_table(self):
+       self.rt = aws_native.ec2.RouteTable(f"vpc-rt-{self.name}",
+                                           vpc_id=self.vpc.id,
+                                           opts=pulumi.ResourceOptions(parent=self.vpc),
+                                          )
+
+       self.r = aws_native.ec2.Route(f"vpc-rt-r-{self.name}",
+                                           route_table_id=self.rt.id,
+                                           destination_cidr_block="0.0.0.0/0",
+                                           gateway_id=self.igw.id,
+                                           opts=pulumi.ResourceOptions(parent=self.rt),
+                                          )
+       aws_native.ec2.SubnetRouteTableAssociation(f"vpc-rt-assoc-{self.name}-1",
+                                                  route_table_id=self.rt.id,
+                                                  subnet_id=self.subnet1,
+                                                  opts=pulumi.ResourceOptions(parent=self.rt))
+
+       aws_native.ec2.SubnetRouteTableAssociation(f"vpc-rt-assoc-{self.name}-2",
+                                                  route_table_id=self.rt.id,
+                                                  subnet_id=self.subnet2,
+                                                  opts=pulumi.ResourceOptions(parent=self.rt))
+
+class SecurityGroup:
+   def __init__(self, name, vpc_id="", description="", ingresses=[], egresses=[], parent=None):
+       self.name = name
+       self.vpc_id = vpc_id
        self.description = description
        self.ingresses = ingresses
        self.egresses = egresses
@@ -46,6 +137,7 @@ class SecurityGroup:
    def create_sg(self):
        self.sg = aws_native.ec2.SecurityGroup(
            f"sg-{self.name}",
+           vpc_id=self.vpc_id,
            group_name=self.name,
            group_description=self.description,
            opts=pulumi.ResourceOptions(parent=self.parent),
@@ -203,6 +295,7 @@ class EKS:
            )
        self.ec2 = aws_native.ec2.Instance(f"ec2-{self.name}",
                                      instance_type=instance_type,
+                                     subnet_id=self.subnet_ids[self.id % 2],
                                      image_id=ami.image_id,
                                      iam_instance_profile=ec2_role.get_profile_name(),
                                      security_group_ids=[ec2_sg.get_id()],
@@ -270,6 +363,90 @@ class EKS:
    def get_cilium_cmesh(self):
        return self.cilium.get_cmesh_enable()
 
+def create_vpc(null_vpc, cidr=""):
+    vpc = VPC("public", azs=azs, parent=null_vpc, cidr=cidr)
+    vpc.create_subnets()
+    vpc.create_internet_gateway()
+    vpc.create_route_table()
+    return vpc
+
+def create_roles(null_sec):
+    eks_role = IAMRole("eks-cp", trust_identity="eks.amazonaws.com", managed_policies=["AmazonEKSClusterPolicy"], parent=null_sec)
+    ec2_role = IAMRole("eks-ec2", trust_identity="ec2.amazonaws.com", managed_policies=["AmazonEC2ContainerRegistryReadOnly", "AmazonEKS_CNI_Policy", "AmazonEKSWorkerNodePolicy"], parent=null_sec)
+    ec2_role.create_profile()
+    return eks_role, ec2_role
+
+def create_sg(null_sec):
+    eks_sg = SecurityGroup("eks-cp", vpc_id=vpc.get_vpc_id(), description="EKS control plane security group", ingresses=[{"ip_protocol": "tcp", "cidr_ip": "0.0.0.0/0", "from_port": 443, "to_port": 443}], parent=null_sec)
+    ec2_sg = SecurityGroup("eks-worker", vpc_id=vpc.get_vpc_id(), description="EKS nodes security group", parent=null_sec, ingresses= [
+                                                              {"ip_protocol": "-1", "source_security_group_id": "self", "from_port": -1, "to_port": -1},
+                                                              {"ip_protocol": "-1", "source_security_group_id": eks_sg.get_id(), "from_port": -1, "to_port": -1},
+                                                              {"ip_protocol": "tcp", "cidr_ip": "0.0.0.0/0", "from_port": 30000, "to_port": 32767},
+                                                              {"ip_protocol": "icmp", "cidr_ip": "0.0.0.0/0", "from_port": -1, "to_port": -1},
+                                                             ])
+    return eks_sg, ec2_sg
+
+def create_eks(null_eks):
+    cmesh_list = []
+    kubeconfigs = []
+    for i in cluster_ids:
+        cilium_sets = [
+                             f"cluster.name=cmesh{i}",
+                             f"cluster.id={i}",
+                             f"egressMasqueradeInterfaces={interfaces}",
+                             f"operator.replicas=1",
+                             f'ipam.mode=cluster-pool',
+                             f'routingMode=tunnel',
+                             'ipam.operator.clusterPoolIPv4PodCIDRList={10.%s.0.0/16}' % i,
+        ]
+        eks_cluster = EKS(f"eksCluster-{i}",
+                          id=i,
+                          role_arn=eks_role.get_arn(),
+                          subnet_ids=vpc.get_subnet_ids(),
+                          sg_ids=[eks_sg.get_id()],
+                          version=kubernetes_version,
+                          ec2_role_arn=ec2_role.get_arn(),
+                          parent=null_eks)
+        eks_cluster.add_node_access()
+        eks_cluster.add_dns_addon()
+        eks_cluster.add_kubeproxy_addon()
+        eks_cluster.create_kubeconfig_eks()
+        eks_cluster.create_kubeconfig_sa()
+        eks_cluster.create_ec2()
+        eks_cluster.add_cilium(config_path=eks_cluster.get_kubeconfig(), parent=eks_cluster.get_kubeconfig_sa(), sets=cilium_sets, cmesh_service="NodePort", depends_on=[eks_cluster.get_ec2()])
+        cmesh_list += eks_cluster.get_cilium_cmesh()
+        kubeconfigs += [ eks_cluster.get_kubeconfig() ]
+
+    kubeconfig_global = local.Command("cmd-kubeconfig-connect",
+            create="kubectl config view --raw > ./kubeconfig.yaml",
+            delete=f"rm -f kubeconfig.yaml",
+            environment={"KUBECONFIG": ":".join(kubeconfigs)},
+            opts=pulumi.ResourceOptions(depends_on=cmesh_list),
+        )
+
+    return cmesh_list, kubeconfig_global
+
+def create_connections():
+    null = []
+    cmesh_connect = []
+    depends_on = []
+    l = 0
+    k = 0
+    connections_list = combinlist(cluster_ids)
+    flat_connections_list, connect_list = combi_optimization(connections_list)
+    for connections in connect_list:
+        null += [local.Command(f"cmd-null-connect-{l}", opts=pulumi.ResourceOptions(depends_on=cmesh_list, parent=kubeconfig_global))]
+        for conn in connections:
+            i = conn[0]
+            j = conn[1]
+            cilium_connect = Cilium(f"cmesh-{k}", config_path=f"./kubeconfig.yaml", parent=null[l], context=f"eksCluster-{j}", depends_on=kubeconfig_global)
+            cilium_connect.cmesh_connection(f"{i}-{j}", destination_context=f"eksCluster-{i}", depends_on=depends_on)
+            cmesh_connect += [cilium_connect.cmesh_connect]
+            k += 1
+        depends_on += cmesh_connect + null
+        l += 1
+
+#Main
 config = pulumi.Config()
 try:
     cluster_number = int(config.require("clusterNumber"))
@@ -279,15 +456,6 @@ cluster_ids = list(range(1, cluster_number+1))
 
 region = aws_tf.config.region
 azs = [f"{region}a", f"{region}b"]
-
-subnets = aws_tf.ec2.get_subnets(
-    filters=[
-        aws_tf.ec2.GetSubnetsFilterArgs(
-            name="availability-zone",
-            values=azs,
-        ),
-    ]
-)
 
 kubernetes_version = "1.30"
 arch = "arm"
@@ -309,72 +477,12 @@ ami = aws_tf.ec2.get_ami(
     )
 
 null_sec = local.Command(f"cmd-null-security")
-eks_role = IAMRole("eks-cp", trust_identity="eks.amazonaws.com", managed_policies=["AmazonEKSClusterPolicy"], parent=null_sec)
-ec2_role = IAMRole("eks-ec2", trust_identity="ec2.amazonaws.com", managed_policies=["AmazonEC2ContainerRegistryReadOnly", "AmazonEKS_CNI_Policy", "AmazonEKSWorkerNodePolicy"], parent=null_sec)
-ec2_role.create_profile()
-
-eks_sg = SecurityGroup("eks-cp", description="EKS control plane security group", ingresses=[{"ip_protocol": "tcp", "cidr_ip": "0.0.0.0/0", "from_port": 443, "to_port": 443}], parent=null_sec)
-ec2_sg = SecurityGroup("eks-worker", description="EKS nodes security group", parent=null_sec, ingresses= [
-                                                          {"ip_protocol": "-1", "source_security_group_id": "self", "from_port": -1, "to_port": -1},
-                                                          {"ip_protocol": "-1", "source_security_group_id": eks_sg.get_id(), "from_port": -1, "to_port": -1},
-                                                          {"ip_protocol": "tcp", "cidr_ip": "0.0.0.0/0", "from_port": 30000, "to_port": 32767},
-                                                          {"ip_protocol": "icmp", "cidr_ip": "0.0.0.0/0", "from_port": -1, "to_port": -1},
-                                                         ])
-
-cmesh_list = []
-kubeconfigs = []
+null_vpc = local.Command(f"cmd-null-vpc")
 null_eks = local.Command(f"cmd-null-eks")
-for i in cluster_ids:
-    cilium_sets = [
-                         f"cluster.name=cmesh{i}",
-                         f"cluster.id={i}",
-                         f"egressMasqueradeInterfaces={interfaces}",
-                         f"operator.replicas=1",
-                         f'ipam.mode=cluster-pool',
-                         f'routingMode=tunnel',
-                         'ipam.operator.clusterPoolIPv4PodCIDRList={10.%s.0.0/16}' % i,
-    ]
 
-    eks_cluster = EKS(f"eksCluster-{i}", id=i, role_arn=eks_role.get_arn(), subnet_ids=subnets.ids, sg_ids=[eks_sg.get_id()], version=kubernetes_version, ec2_role_arn=ec2_role.get_arn(), parent=null_eks)
-    eks_cluster.add_node_access()
-    eks_cluster.add_dns_addon()
-    eks_cluster.add_kubeproxy_addon()
-    eks_cluster.create_kubeconfig_eks()
-    eks_cluster.create_kubeconfig_sa()
-    eks_cluster.create_ec2()
-    eks_cluster.add_cilium(config_path=eks_cluster.get_kubeconfig(), parent=eks_cluster.get_kubeconfig_sa(), sets=cilium_sets, cmesh_service="NodePort", depends_on=[eks_cluster.get_ec2()])
-    cmesh_list += eks_cluster.get_cilium_cmesh()
-    kubeconfigs += [ eks_cluster.get_kubeconfig() ]
+vpc = create_vpc(null_vpc, cidr="172.31.0.0/16")
+eks_role, ec2_role = create_roles(null_sec)
+eks_sg, ec2_sg = create_sg(null_sec)
+cmesh_list, kubeconfig_global = create_eks(null_eks)
 
-kubeconfig_global = local.Command("cmd-kubeconfig-connect",
-        create="kubectl config view --raw > ./kubeconfig.yaml",
-        delete=f"rm -f kubeconfig.yaml",
-        environment={"KUBECONFIG": ":".join(kubeconfigs)},
-        opts=pulumi.ResourceOptions(depends_on=cmesh_list),
-    )
-
-account_id = aws_tf.get_caller_identity().account_id
-
-k = 0
-l = 0
-cmesh_connect = []
-depends_on = []
-null = []
-
-connections_list = combinlist(cluster_ids)
-connections_list_cst = connections_list[:]
-
-flat_connections_list, connections_list = combi_optimization(connections_list)
-
-for connections in connections_list:
-    null += [local.Command(f"cmd-null-connect-{l}", opts=pulumi.ResourceOptions(depends_on=cmesh_list, parent=kubeconfig_global))]
-    for conn in connections:
-        i = conn[0]
-        j = conn[1]
-        cilium_connect = Cilium(f"cmesh-{k}", config_path=f"./kubeconfig.yaml", parent=null[l], context=f"eksCluster-{j}", depends_on=kubeconfig_global)
-        cilium_connect.cmesh_connection(f"{i}-{j}", destination_context=f"eksCluster-{i}", depends_on=depends_on)
-        cmesh_connect += [cilium_connect.cmesh_connect]
-
-        k += 1
-    depends_on += cmesh_connect + null
-    l += 1
+create_connections()
