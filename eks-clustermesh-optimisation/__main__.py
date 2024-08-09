@@ -254,11 +254,11 @@ class EKS:
        self.create_eks()
 
    def create_eks(self):
-       self.cluster = aws_native.eks.Cluster(
+       self.cluster = aws_tf.eks.Cluster(
            f"eks-cp-{self.name}",
            name=self.name,
            role_arn=self.role_arn,
-           resources_vpc_config=aws_tf.eks.ClusterVpcConfigArgs(
+           vpc_config=aws_tf.eks.ClusterVpcConfigArgs(
                subnet_ids=self.subnet_ids,
                security_group_ids=self.sg_ids,
                endpoint_public_access=True,
@@ -412,19 +412,19 @@ def create_eks(null_eks):
         eks_cluster.add_kubeproxy_addon()
         eks_cluster.create_kubeconfig_eks()
         eks_cluster.create_kubeconfig_sa()
-        eks_cluster.create_ec2()
-        eks_cluster.add_cilium(config_path=eks_cluster.get_kubeconfig(), parent=eks_cluster.get_kubeconfig_sa(), sets=cilium_sets, cmesh_service="NodePort", depends_on=[eks_cluster.get_ec2()])
-        cmesh_list += eks_cluster.get_cilium_cmesh()
-        kubeconfigs += [ eks_cluster.get_kubeconfig() ]
+        #eks_cluster.create_ec2()
+        #eks_cluster.add_cilium(config_path=eks_cluster.get_kubeconfig(), parent=eks_cluster.get_kubeconfig_sa(), sets=cilium_sets, cmesh_service="NodePort", depends_on=[eks_cluster.get_ec2()])
+        #cmesh_list += eks_cluster.get_cilium_cmesh()
+        #kubeconfigs += [ eks_cluster.get_kubeconfig() ]
 
-    kubeconfig_global = local.Command("cmd-kubeconfig-connect",
-            create="kubectl config view --raw > ./kubeconfig.yaml",
-            delete=f"rm -f kubeconfig.yaml",
-            environment={"KUBECONFIG": ":".join(kubeconfigs)},
-            opts=pulumi.ResourceOptions(depends_on=cmesh_list),
-        )
+    #kubeconfig_global = local.Command("cmd-kubeconfig-connect",
+    #        create="kubectl config view --raw > ./kubeconfig.yaml",
+    #        delete=f"rm -f kubeconfig.yaml",
+    #        environment={"KUBECONFIG": ":".join(kubeconfigs)},
+    #        opts=pulumi.ResourceOptions(depends_on=cmesh_list),
+    #    )
 
-    return cmesh_list, kubeconfig_global
+    #return cmesh_list, kubeconfig_global
 
 def create_connections():
     null = []
@@ -451,7 +451,7 @@ config = pulumi.Config()
 try:
     cluster_number = int(config.require("clusterNumber"))
 except:
-    cluster_number = 4
+    cluster_number = 32
 cluster_ids = list(range(1, cluster_number+1))
 
 region = aws_tf.config.region
@@ -483,6 +483,7 @@ null_eks = local.Command(f"cmd-null-eks")
 vpc = create_vpc(null_vpc, cidr="172.31.0.0/16")
 eks_role, ec2_role = create_roles(null_sec)
 eks_sg, ec2_sg = create_sg(null_sec)
-cmesh_list, kubeconfig_global = create_eks(null_eks)
+create_eks(null_eks)
+#cmesh_list, kubeconfig_global = create_eks(null_eks)
 
-create_connections()
+#create_connections()
