@@ -6,7 +6,30 @@ from pulumi_command import local
 import littlejo_cilium as cilium
 import itertools
 import ipaddress
-#import base64 #TOFIX
+
+
+def get_userdata(eks_name, api_server_url, ca):
+    combined = pulumi.Output.all(eks_name, api_server_url, ca)
+    return combined.apply(lambda vars: f"""Content-Type: multipart/mixed; boundary="MIMEBOUNDARY"
+MIME-Version: 1.0
+
+--MIMEBOUNDARY
+Content-Transfer-Encoding: 7bit
+Content-Type: application/node.eks.aws
+Mime-Version: 1.0
+
+---
+apiVersion: node.eks.aws/v1alpha1
+kind: NodeConfig
+spec:
+  cluster:
+    name: {vars[0]}
+    apiServerEndpoint: {vars[1]}
+    certificateAuthority: {vars[2]}
+    cidr: 10.100.0.0/16
+
+--MIMEBOUNDARY--
+""")
 
 def combinlist(seq):
     return list(itertools.combinations(seq, 2))
@@ -254,11 +277,11 @@ class EKS:
        self.create_eks()
 
    def create_eks(self):
-       self.cluster = aws_native.eks.Cluster(
+       self.cluster = aws_tf.eks.Cluster(
            f"eks-cp-{self.name}",
            name=self.name,
            role_arn=self.role_arn,
-           resources_vpc_config=aws_tf.eks.ClusterVpcConfigArgs(
+           vpc_config=aws_tf.eks.ClusterVpcConfigArgs(
                subnet_ids=self.subnet_ids,
                security_group_ids=self.sg_ids,
                endpoint_public_access=True,
@@ -274,34 +297,22 @@ class EKS:
        )
 
    def create_ec2(self):
-       substitute = {
-                     'EKS_NAME': self.cluster.name,
-                     'B64_CLUSTER_CA': self.cluster.certificate_authority_data,
-                     'API_SERVER_URL': self.cluster.endpoint,
-                     'K8S_CLUSTER_DNS_IP': "10.100.0.10"
-                    }
        tags_dict = {
                      'Name': f"ec2-{self.name}",
                      f'kubernetes.io/cluster/{self.name}': "owned",
                      f'k8s.io/cluster/{self.name}': "owned",
                    }
 
-       tags = [ {'key': k, 'value': v} for k, v in tags_dict.items() ]
-
-       userdata = local.Command(f"cmd-userdata-ec2-{self.name}",
-               create=f"envsubst < {template_name} | base64", #TOFIX
-               environment=substitute,
-               opts=pulumi.ResourceOptions(parent=self.cluster),
-           )
-       self.ec2 = aws_native.ec2.Instance(f"ec2-{self.name}",
+       user_data = get_userdata(self.cluster.name, self.cluster.endpoint, self.cluster.certificate_authority["data"])
+       self.ec2 = aws_tf.ec2.Instance(f"ec2-{self.name}",
                                      instance_type=instance_type,
                                      subnet_id=self.subnet_ids[self.id % 2],
-                                     image_id=ami.image_id,
+                                     ami=ami.image_id,
                                      iam_instance_profile=ec2_role.get_profile_name(),
-                                     security_group_ids=[ec2_sg.get_id()],
-                                     user_data=userdata.stdout,
-                                     tags=tags,
-                                     opts=pulumi.ResourceOptions(parent=userdata),
+                                     vpc_security_group_ids=[ec2_sg.get_id()],
+                                     user_data=user_data,
+                                     tags=tags_dict,
+                                     opts=pulumi.ResourceOptions(parent=self.cluster),
                                     )
 
    def create_kubeconfig_eks(self):
@@ -313,11 +324,20 @@ class EKS:
 
    def create_kubeconfig_sa(self):
        self.kubeconfig = f"kubeconfig-sa-{self.id}"
+       #auth = aws_tf.eks.get_cluster_auth(name=self.cluster.cluster_id)
        self.kubeconfig_sa = local.Command(f"cmd-kubeconfig-sa-{self.name}",
-               create=f"bash helper/creation-kubeconfig.sh {self.id} {self.kubeconfig}",
+               create=f"bash helper/creation-kubeconfig.sh {self.kubeconfig}",
                delete=f"rm -f {self.kubeconfig}",
-               environment={"KUBECONFIG": f"kubeconfig-{self.name}.yaml"},
-               opts=pulumi.ResourceOptions(parent=self.kubeconfig_eks)
+               environment={
+                             "KUBECONFIG": f"kubeconfig-{self.name}.yaml",
+                             "serviceaccount": f"admin-{self.id}",
+                             "cluster": self.name,
+                             "ca": self.cluster.certificate_authority["data"],
+                             "server": self.cluster.endpoint,
+                             "account": self.cluster.arn,
+       #                      "token": auth.token,
+                           },
+               opts=pulumi.ResourceOptions(parent=self.cluster)
        )
 
    def get_ec2(self):
@@ -410,7 +430,6 @@ def create_eks(null_eks):
         eks_cluster.add_node_access()
         eks_cluster.add_dns_addon()
         eks_cluster.add_kubeproxy_addon()
-        eks_cluster.create_kubeconfig_eks()
         eks_cluster.create_kubeconfig_sa()
         eks_cluster.create_ec2()
         eks_cluster.add_cilium(config_path=eks_cluster.get_kubeconfig(), parent=eks_cluster.get_kubeconfig_sa(), sets=cilium_sets, cmesh_service="NodePort", depends_on=[eks_cluster.get_ec2()])
@@ -463,12 +482,10 @@ arch = "arm"
 if arch == "arm":
     ami_name_regex = f"^amazon-eks-node-al2023-arm64-standard-{kubernetes_version}-v20.*"
     instance_type = "t4g.medium"
-    template_name = "userdata/template-arm"
     interfaces = "ens+"
 else:
     ami_name_regex = f"^amazon-eks-node-{kubernetes_version}-v202.*"
     instance_type = "t3.micro"
-    template_name = "userdata/template"
     interfaces = "eth0"
 
 ami = aws_tf.ec2.get_ami(
