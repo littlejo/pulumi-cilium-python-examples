@@ -1,7 +1,21 @@
-number=$1
-kubeconfig=$2
-serviceaccount=admin-$number
+kubeconfig=$1
 namespace=default
+cluster_file="$(mktemp)"
+context=$cluster
+
+function create_kubeconfig(){
+	kubectl config set-credentials $account --token="$token" >/dev/null
+	kubectl config set-cluster "$cluster" --server="$server" --certificate-authority="$ca_crt" --embed-certs >/dev/null
+	kubectl config set-context "$context" --cluster="$cluster" --namespace="$namespace" --user="$account" >/dev/null
+	kubectl config use-context "$context" >/dev/null
+}
+
+export KUBECONFIG=$(mktemp)
+
+ca_crt="$(mktemp)"; echo "$ca" | base64 -d > $ca_crt
+
+export token=$(aws eks get-token --cluster-name $cluster | jq -r .status.token)
+create_kubeconfig
 
 kubectl create sa $serviceaccount -n $namespace
 kubectl create clusterrolebinding $serviceaccount --serviceaccount=$namespace:$serviceaccount --clusterrole=cluster-admin
@@ -17,15 +31,8 @@ metadata:
 type: kubernetes.io/service-account-token
 EOF
 
-token=$(kubectl get secret $serviceaccount -n $namespace -o "jsonpath={.data.token}" | base64 -d)
-ca=$(kubectl get secret $serviceaccount -n $namespace -o "jsonpath={.data.ca\.crt}" | base64 -d)
-ca_crt="$(mktemp)"; echo "$ca" > $ca_crt
-cluster=eksCluster-$number
-context=$cluster
-server=$(kubectl config view -o "jsonpath={.clusters[].cluster.server}")
+export token=$(kubectl get secret $serviceaccount -n $namespace -o "jsonpath={.data.token}" | base64 -d)
+export account=$serviceaccount
 
 export KUBECONFIG=$kubeconfig
-kubectl config set-credentials $serviceaccount --token="$token" >/dev/null
-kubectl config set-cluster "$cluster" --server="$server" --certificate-authority="$ca_crt" --embed-certs >/dev/null
-kubectl config set-context "$context" --cluster="$cluster" --namespace="$namespace" --user="$serviceaccount" >/dev/null
-kubectl config use-context "$context" >/dev/null
+create_kubeconfig
