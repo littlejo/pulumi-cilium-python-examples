@@ -1,4 +1,3 @@
-#TODO
 import pulumi
 import pulumi_aws_native as aws_native
 import pulumi_aws as aws_tf
@@ -8,8 +7,8 @@ import itertools
 import ipaddress
 
 
-def get_userdata(eks_name, api_server_url, ca):
-    combined = pulumi.Output.all(eks_name, api_server_url, ca)
+def get_userdata(eks_name, api_server_url, ca, cidr):
+    combined = pulumi.Output.all(eks_name, api_server_url, ca, cidr)
     return combined.apply(lambda vars: f"""Content-Type: multipart/mixed; boundary="MIMEBOUNDARY"
 MIME-Version: 1.0
 
@@ -26,7 +25,7 @@ spec:
     name: {vars[0]}
     apiServerEndpoint: {vars[1]}
     certificateAuthority: {vars[2]}
-    cidr: 10.100.0.0/16
+    cidr: {vars[3]}
 
 --MIMEBOUNDARY--
 """)
@@ -68,7 +67,7 @@ class VPC:
        self.cidr = cidr
        self.parent = parent
        self.create_vpc()
-       new_prefix = int(cidr.split("/")[1])+1
+       new_prefix = int(cidr.split("/")[1])+2
        self.azs = azs
        self.subnet_cidr = list(ipaddress.ip_network(cidr).subnets(new_prefix=new_prefix))
 
@@ -89,14 +88,14 @@ class VPC:
        return self.vpc.vpc_id
 
    def get_subnet_ids(self):
-       return [self.subnet1.subnet_id, self.subnet2.subnet_id]
+       return [self.private_subnet1.subnet_id, self.private_subnet2.subnet_id]
 
    def create_subnets(self):
        tags = {
-         "Name": f"subnet-{self.name}-1"
+         "Name": f"subnet-public-{self.name}-1"
        }
        self.subnet1 = aws_native.ec2.Subnet(
-           f"vpc-subnet-{self.name}-1",
+           f"vpc-subnet-public-{self.name}-1",
            vpc_id=self.vpc.id,
            cidr_block=self.subnet_cidr[0].with_prefixlen,
            availability_zone=self.azs[0],
@@ -105,10 +104,10 @@ class VPC:
            tags=tags_format(tags),
        )
        tags = {
-         "Name": f"subnet-{self.name}-2"
+         "Name": f"subnet-public-{self.name}-2"
        }
        self.subnet2 = aws_native.ec2.Subnet(
-           f"vpc-subnet-{self.name}-2",
+           f"vpc-subnet-public-{self.name}-2",
            vpc_id=self.vpc.id,
            cidr_block=self.subnet_cidr[1].with_prefixlen,
            availability_zone=self.azs[1],
@@ -116,6 +115,43 @@ class VPC:
            map_public_ip_on_launch=True,
            tags=tags_format(tags),
        )
+       tags = {
+         "Name": f"subnet-private-{self.name}-1"
+       }
+       self.private_subnet1 = aws_native.ec2.Subnet(
+           f"vpc-private-subnet-{self.name}-1",
+           vpc_id=self.vpc.id,
+           cidr_block=self.subnet_cidr[2].with_prefixlen,
+           availability_zone=self.azs[0],
+           opts=pulumi.ResourceOptions(parent=self.vpc),
+           tags=tags_format(tags),
+       )
+       tags = {
+         "Name": f"subnet-private-{self.name}-2"
+       }
+       self.private_subnet2 = aws_native.ec2.Subnet(
+           f"vpc-private-subnet-{self.name}-2",
+           vpc_id=self.vpc.id,
+           cidr_block=self.subnet_cidr[3].with_prefixlen,
+           availability_zone=self.azs[1],
+           opts=pulumi.ResourceOptions(parent=self.vpc),
+           tags=tags_format(tags),
+       )
+   def create_nat_gateway(self):
+       tags = {
+         "Name": self.name
+       }
+       nat_eip = aws_tf.ec2.Eip("vpc-eip",
+           opts = pulumi.ResourceOptions(parent=self.parent),
+	   tags = tags,
+       )
+       self.nat_gw = aws_tf.ec2.NatGateway("vpc-nat-gw",
+           allocation_id=nat_eip.id,
+           subnet_id=self.subnet1,
+	   tags = tags,
+           opts = pulumi.ResourceOptions(parent=nat_eip)
+       )
+
    def create_internet_gateway(self):
        self.igw = aws_native.ec2.InternetGateway(f"vpc-igw-{self.name}",
                                                 opts=pulumi.ResourceOptions(parent=self.parent))
@@ -126,26 +162,56 @@ class VPC:
                          )
 
    def create_route_table(self):
-       self.rt = aws_native.ec2.RouteTable(f"vpc-rt-{self.name}",
+       tags = {
+         "Name": f"vpc-rt-public-{self.name}",
+       }
+       self.rt = aws_native.ec2.RouteTable(f"vpc-rt-public-{self.name}",
                                            vpc_id=self.vpc.id,
                                            opts=pulumi.ResourceOptions(parent=self.vpc),
+                                           tags=tags_format(tags),
                                           )
 
-       self.r = aws_native.ec2.Route(f"vpc-rt-r-{self.name}",
+       self.r = aws_native.ec2.Route(f"vpc-rt-r-public-{self.name}",
                                            route_table_id=self.rt.id,
                                            destination_cidr_block="0.0.0.0/0",
                                            gateway_id=self.igw.id,
                                            opts=pulumi.ResourceOptions(parent=self.rt),
                                           )
-       aws_native.ec2.SubnetRouteTableAssociation(f"vpc-rt-assoc-{self.name}-1",
+       aws_native.ec2.SubnetRouteTableAssociation(f"vpc-rt-assoc-public-{self.name}-1",
                                                   route_table_id=self.rt.id,
                                                   subnet_id=self.subnet1,
                                                   opts=pulumi.ResourceOptions(parent=self.rt))
 
-       aws_native.ec2.SubnetRouteTableAssociation(f"vpc-rt-assoc-{self.name}-2",
+       aws_native.ec2.SubnetRouteTableAssociation(f"vpc-rt-assoc-public-{self.name}-2",
                                                   route_table_id=self.rt.id,
                                                   subnet_id=self.subnet2,
                                                   opts=pulumi.ResourceOptions(parent=self.rt))
+
+       tags = {
+         "Name": f"vpc-rt-private-{self.name}",
+       }
+       self.rt_pv = aws_native.ec2.RouteTable(f"vpc-rt-private-{self.name}",
+                                           vpc_id=self.vpc.id,
+                                           tags=tags_format(tags),
+                                           opts=pulumi.ResourceOptions(parent=self.vpc),
+                                          )
+
+       self.r_pv = aws_native.ec2.Route(f"vpc-rt-r-private-{self.name}",
+                                           route_table_id=self.rt_pv.id,
+                                           destination_cidr_block="0.0.0.0/0",
+                                           nat_gateway_id=self.nat_gw.id,
+                                           opts=pulumi.ResourceOptions(parent=self.rt_pv),
+                                          )
+
+       aws_native.ec2.SubnetRouteTableAssociation(f"vpc-rt-assoc-private-{self.name}-1",
+                                                  route_table_id=self.rt_pv.id,
+                                                  subnet_id=self.private_subnet1,
+                                                  opts=pulumi.ResourceOptions(parent=self.rt_pv))
+
+       aws_native.ec2.SubnetRouteTableAssociation(f"vpc-rt-assoc-private-{self.name}-2",
+                                                  route_table_id=self.rt_pv.id,
+                                                  subnet_id=self.private_subnet2,
+                                                  opts=pulumi.ResourceOptions(parent=self.rt_pv))
 
 class SecurityGroup:
    def __init__(self, name, vpc_id="", description="", ingresses=[], egresses=[], parent=None):
@@ -265,16 +331,20 @@ class Cilium:
        return self.cmesh
 
 class EKS:
-   def __init__(self, name, id="", role_arn="", subnet_ids=[], sg_ids=[], version="1.30", ec2_role_arn="", parent=None):
+   def __init__(self, name, id="", role_arn="", subnet_ids=[], sg_ids=[], version="1.30", ec2_role_arn="", ec2_sg_ids=[], ec2_profile_name="", parent=None):
        self.name = name
        self.id = id
        self.role_arn = role_arn
        self.subnet_ids = subnet_ids
        self.sg_ids = sg_ids
        self.version = version
-       self.ec2_role_arn = ec2_role_arn
        self.parent = parent
        self.create_eks()
+       self.ec2 = {
+         "role_arn": ec2_role_arn,
+         "sg_ids": ec2_sg_ids,
+         "profile_name": ec2_profile_name,
+       }
 
    def create_eks(self):
        self.cluster = aws_tf.eks.Cluster(
@@ -285,6 +355,7 @@ class EKS:
                subnet_ids=self.subnet_ids,
                security_group_ids=self.sg_ids,
                endpoint_public_access=True,
+               endpoint_private_access=True,
                public_access_cidrs=["0.0.0.0/0"],
            ),
            bootstrap_self_managed_addons=True,
@@ -303,13 +374,13 @@ class EKS:
                      f'k8s.io/cluster/{self.name}': "owned",
                    }
 
-       user_data = get_userdata(self.cluster.name, self.cluster.endpoint, self.cluster.certificate_authority["data"])
+       user_data = get_userdata(self.cluster.name, self.cluster.endpoint, self.cluster.certificate_authority["data"], self.cluster.kubernetes_network_config.service_ipv4_cidr)
        self.ec2 = aws_tf.ec2.Instance(f"ec2-{self.name}",
                                      instance_type=instance_type,
                                      subnet_id=self.subnet_ids[self.id % 2],
                                      ami=ami.image_id,
-                                     iam_instance_profile=ec2_role.get_profile_name(),
-                                     vpc_security_group_ids=[ec2_sg.get_id()],
+                                     iam_instance_profile=self.ec2["profile_name"],
+                                     vpc_security_group_ids=self.ec2["sg_ids"],
                                      user_data=user_data,
                                      tags=tags_dict,
                                      opts=pulumi.ResourceOptions(parent=self.cluster),
@@ -355,7 +426,7 @@ class EKS:
    def add_node_access(self):
        aws_native.eks.AccessEntry(f"eks-access-entry-ec2-{self.name}",
            cluster_name=self.name,
-           principal_arn=self.ec2_role_arn,
+           principal_arn=self.ec2["role_arn"],
            type="EC2_LINUX",
            opts=pulumi.ResourceOptions(parent=self.cluster),
        )
@@ -384,9 +455,10 @@ class EKS:
        return self.cilium.get_cmesh_enable()
 
 def create_vpc(null_vpc, cidr=""):
-    vpc = VPC("public", azs=azs, parent=null_vpc, cidr=cidr)
+    vpc = VPC("private", azs=azs, parent=null_vpc, cidr=cidr)
     vpc.create_subnets()
     vpc.create_internet_gateway()
+    vpc.create_nat_gateway()
     vpc.create_route_table()
     return vpc
 
@@ -406,7 +478,7 @@ def create_sg(null_sec):
                                                              ])
     return eks_sg, ec2_sg
 
-def create_eks(null_eks):
+def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids, ec2_profile_name):
     cmesh_list = []
     kubeconfigs = []
     for i in cluster_ids:
@@ -421,11 +493,13 @@ def create_eks(null_eks):
         ]
         eks_cluster = EKS(f"eksCluster-{i}",
                           id=i,
-                          role_arn=eks_role.get_arn(),
-                          subnet_ids=vpc.get_subnet_ids(),
-                          sg_ids=[eks_sg.get_id()],
+                          role_arn=role_arn,
+                          subnet_ids=subnet_ids,
+                          sg_ids=sg_ids,
                           version=kubernetes_version,
-                          ec2_role_arn=ec2_role.get_arn(),
+                          ec2_role_arn=ec2_role_arn,
+                          ec2_sg_ids=ec2_sg_ids,
+                          ec2_profile_name=ec2_profile_name,
                           parent=null_eks)
         eks_cluster.add_node_access()
         eks_cluster.add_dns_addon()
@@ -500,6 +574,12 @@ null_eks = local.Command(f"cmd-null-eks")
 vpc = create_vpc(null_vpc, cidr="172.31.0.0/16")
 eks_role, ec2_role = create_roles(null_sec)
 eks_sg, ec2_sg = create_sg(null_sec)
-cmesh_list, kubeconfig_global = create_eks(null_eks)
-
+cmesh_list, kubeconfig_global = create_eks(null_eks,
+                                           eks_role.get_arn(),
+                                           vpc.get_subnet_ids(),
+                                           [eks_sg.get_id()],
+                                           ec2_role.get_arn(),
+                                           [ec2_sg.get_id()],
+                                           ec2_role.get_profile_name(),
+                                          )
 create_connections()
