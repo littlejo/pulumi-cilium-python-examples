@@ -110,6 +110,7 @@ jobs:
           cloud-url: file://~
 
       - name: Install cilium connection
+        if: steps.set_output.outputs.status == 'proceed'
         run: |
           export KUBECONFIG=./kubeconfig.yaml
           CONTEXTD="eksCluster-2"
