@@ -47,7 +47,7 @@ jobs:
           git checkout cilium-cli-clustermesh-remote-contexts
           cd cilium-cli
           make
-          sudo make install
+          sudo PATH=$PATH:/usr/local/go/bin make install
 
       - name: Installing dependencies 📦️
         run: pip install -r requirements.txt
