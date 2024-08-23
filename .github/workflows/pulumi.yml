@@ -36,13 +36,12 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
-        with:
-          cache: true
-          go-version: '^1.23.0'
-
       - name: Install new cilium cli
         run: |
+          wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
+          rm -rf /usr/local/go && tar -C /usr/local -xzf go1.23.0.linux-amd64.tar.gz
+          export PATH=$PATH:/usr/local/go/bin
+          go version
           git clone https://github.com/littlejo/cilium.git
           cd cilium
           git checkout cilium-cli-clustermesh-remote-contexts
