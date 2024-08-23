@@ -57,11 +57,6 @@ depends_on = []
 
 cluster_ids = list(range(1, cluster_number+1))
 
-connections_list = combinlist(cluster_ids)
-connections_list_cst = connections_list[:]
-
-flat_connections_list, connections_list = combi_optimization(connections_list)
-
 for i in cluster_ids:
     kind_list += [local.Command(f"kindCluster-{i}",
         create=f"sed 's/NUMBER/{i}/g' kind.yaml.template > kind-{i}.yaml && kind create cluster --config kind-{i}.yaml --name cmesh{i}",
@@ -75,12 +70,12 @@ k = 0
 l = 0
 null = []
 
-for connections in connections_list:
-    null += [local.Command(f"null-{l}", create=f"echo ''", opts=pulumi.ResourceOptions(depends_on=[a['cmesh'] for a in c]))]
-    for conn in connections:
-        i = conn[0]
-        j = conn[1]
-        cmesh_connect += [cilium.ClustermeshConnection(f"cmeshConnect-{i}-{j}", destination_context=f"kind-cmesh{i}", opts=pulumi.ResourceOptions(parent=null[l], depends_on=depends_on, providers=[c[j-1]['provider']]))]
-        k += 1
-    depends_on += cmesh_connect + null
-    l += 1
+#for connections in connections_list:
+#    null += [local.Command(f"null-{l}", create=f"echo ''", opts=pulumi.ResourceOptions(depends_on=[a['cmesh'] for a in c]))]
+#    for conn in connections:
+#        i = conn[0]
+#        j = conn[1]
+#        cmesh_connect += [cilium.ClustermeshConnection(f"cmeshConnect-{i}-{j}", destination_context=f"kind-cmesh{i}", opts=pulumi.ResourceOptions(parent=null[l], depends_on=depends_on, providers=[c[j-1]['provider']]))]
+#        k += 1
+#    depends_on += cmesh_connect + null
+#    l += 1

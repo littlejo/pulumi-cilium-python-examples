@@ -1,7 +1,7 @@
 name: Pulumi
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
-  CLUSTER_NUMBER: "3"
+  CLUSTER_NUMBER: "5"
 on:
   push:
     branches:
@@ -48,7 +48,7 @@ jobs:
           git checkout cilium-cli-clustermesh-remote-contexts
           cd cilium-cli
           make
-          make install
+          sudo make install
 
       - name: Installing dependencies 📦️
         run: pip install -r requirements.txt
@@ -64,6 +64,15 @@ jobs:
           command: up
           stack-name: dev
           cloud-url: file://~
+
+      - name: Install cilium connection
+        run: |
+          CONTEXTD=""
+          for i in $(seq 2 $CLUSTER_NUMBER)
+          do
+            CONTEXTD=$CONTEXTD,kind-cmesh$i
+          done
+          cilium clustermesh connect --context=kind-cmesh1 --destination-contexts=$CONTEXTD
 
       - name: Check Cluster Mesh
         run: |
