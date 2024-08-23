@@ -1,7 +1,7 @@
 name: Pulumi
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
-  CLUSTER_NUMBER: "5"
+  CLUSTER_NUMBER: "6"
 on:
   push:
     branches:
@@ -36,18 +36,19 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
       - name: Install new cilium cli
         run: |
-          wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
-          sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.23.0.linux-amd64.tar.gz
-          export PATH=$PATH:/usr/local/go/bin
-          go version
           git clone https://github.com/littlejo/cilium.git
           cd cilium
           git checkout cilium-cli-clustermesh-remote-contexts
           cd cilium-cli
           make
-          sudo PATH=$PATH:/usr/local/go/bin make install
+          install -m 0755 -d /usr/local/bin
+          install -m 0755 cilium /usr/local/bin
 
       - name: Installing dependencies 📦️
         run: pip install -r requirements.txt
@@ -71,7 +72,7 @@ jobs:
           do
             CONTEXTD=$CONTEXTD,kind-cmesh$i
           done
-          cilium clustermesh connect --context=kind-cmesh1 --destination-contexts=$CONTEXTD
+          cilium clustermesh connect --connection-mode=mesh --context=kind-cmesh1 --destination-contexts=$CONTEXTD
 
       - name: Check Cluster Mesh
         run: |
