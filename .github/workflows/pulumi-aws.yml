@@ -73,6 +73,22 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
+      - uses: actions/setup-go@v5
+        if: steps.set_output.outputs.status == 'proceed'
+        with:
+          go-version: 'stable'
+
+      - name: Install new cilium cli
+        if: steps.set_output.outputs.status == 'proceed'
+        run: |
+          git clone https://github.com/littlejo/cilium.git
+          cd cilium
+          git checkout cilium-cli-clustermesh-remote-contexts
+          cd cilium-cli
+          make
+          sudo install -m 0755 -d /usr/local/bin
+          sudo install -m 0755 cilium /usr/local/bin
+
       - name: Installing dependencies 📦️
         if: steps.set_output.outputs.status == 'proceed'
         run: pip install -r requirements.txt
@@ -92,6 +108,18 @@ jobs:
           command: up
           stack-name: dev
           cloud-url: file://~
+
+      - name: Install cilium connection
+        run: |
+          export KUBECONFIG=./kubeconfig.yaml
+          CONTEXTD="eksCluster-2"
+          CLUSTER_NUMBER=${{ matrix.clusters }}
+          for i in $(seq 3 $CLUSTER_NUMBER)
+          do
+            CONTEXTD=$CONTEXTD,eksCluster-$i
+          done
+          echo $CONTEXTD
+          cilium clustermesh connect --connection-mode=mesh --context=eksCluster-1 --destination-contexts=$CONTEXTD
 
       #TODO
       #- name: Check Cluster Mesh

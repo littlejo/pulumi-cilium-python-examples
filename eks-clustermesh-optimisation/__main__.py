@@ -582,4 +582,4 @@ cmesh_list, kubeconfig_global = create_eks(null_eks,
                                            [ec2_sg.get_id()],
                                            ec2_role.get_profile_name(),
                                           )
-create_connections()
+#create_connections()
