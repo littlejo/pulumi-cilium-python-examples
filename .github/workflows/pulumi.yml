@@ -1,7 +1,7 @@
 name: Pulumi
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
-  CLUSTER_NUMBER: "6"
+  CLUSTER_NUMBER: "10"
 on:
   push:
     branches:
@@ -67,11 +67,12 @@ jobs:
 
       - name: Install cilium connection
         run: |
-          CONTEXTD=""
-          for i in $(seq 2 $CLUSTER_NUMBER)
+          CONTEXTD="kind-cmesh2"
+          for i in $(seq 3 $CLUSTER_NUMBER)
           do
             CONTEXTD=$CONTEXTD,kind-cmesh$i
           done
+          echo $CONTEXTD
           cilium clustermesh connect --connection-mode=mesh --context=kind-cmesh1 --destination-contexts=$CONTEXTD
 
       - name: Check Cluster Mesh
