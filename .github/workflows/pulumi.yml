@@ -24,10 +24,6 @@ jobs:
         working-directory: ${{ matrix.dir }}
     steps:
       - uses: actions/checkout@v4
-      - uses: cilium/cilium-cli@404d52692f62eebb7211fdacd114848995ada1b7
-        with:
-          skip-build: true
-          release-version: v0.16.10
       - name: Setup Python ✨
         uses: actions/setup-python@v5
         with:
@@ -39,6 +35,15 @@ jobs:
           sudo rm -rf /opt/ghc
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      - name: Install new cilium cli
+        run: |
+          git clone https://github.com/littlejo/cilium.git
+          cd cilium
+          git checkout cilium-cli-clustermesh-remote-contexts
+          cd cilium-cli
+          make
+          make install
 
       - name: Installing dependencies 📦️
         run: pip install -r requirements.txt
