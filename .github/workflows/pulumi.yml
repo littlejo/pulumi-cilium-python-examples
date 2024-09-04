@@ -1,7 +1,6 @@
 name: Pulumi
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
-  CLUSTER_NUMBER: "10"
 on:
   push:
     branches:
@@ -18,6 +17,10 @@ jobs:
         dir:
           - ./kind-clustermesh
           - ./kind-clustermesh-optimization
+        clusters:
+          - 4
+          - 7
+          - 10
     name: Cluster Mesh Kind
     runs-on: ubuntu-latest
     defaults:
@@ -57,7 +60,7 @@ jobs:
       - uses: pulumi/actions@v5
 
       - name: Create stack
-        run: pulumi login --local && pulumi stack init dev && pulumi config set --stack dev clusterNumber $CLUSTER_NUMBER
+        run: pulumi login --local && pulumi stack init dev && pulumi config set --stack dev clusterNumber ${{ matrix.clusters }}
 
       - uses: pulumi/actions@v5
         with:
@@ -69,6 +72,7 @@ jobs:
       - name: Install cilium connection
         run: |
           CONTEXTD="kind-cmesh2"
+          CLUSTER_NUMBER=${{ matrix.clusters }}
           for i in $(seq 3 $CLUSTER_NUMBER)
           do
             CONTEXTD=$CONTEXTD,kind-cmesh$i
@@ -78,6 +82,7 @@ jobs:
 
       - name: Check Cluster Mesh
         run: |
+          CLUSTER_NUMBER=${{ matrix.clusters }}
           for i in $(seq 1 $CLUSTER_NUMBER)
           do
             echo "Cluster: kind-cmesh$i"
