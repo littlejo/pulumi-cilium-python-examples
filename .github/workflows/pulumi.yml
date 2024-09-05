@@ -1,7 +1,6 @@
 name: Pulumi
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
-  CONNECTION_MODE: "bidirectional"
 on:
   push:
     branches:
@@ -16,12 +15,15 @@ jobs:
       fail-fast: false
       matrix:
         dir:
-          - ./kind-clustermesh
           - ./kind-clustermesh-optimization
         clusters:
           - 4
           - 7
           - 10
+        connection_mode:
+          - "unicast"
+          - "bidirectional"
+          - "mesh"
     name: Cluster Mesh Kind
     runs-on: ubuntu-latest
     defaults:
@@ -74,6 +76,7 @@ jobs:
         run: |
           CONTEXTD="kind-cmesh2"
           CLUSTER_NUMBER=${{ matrix.clusters }}
+          CONNECTION_MODE=${{ matrix.connection_mode }}
           for i in $(seq 3 $CLUSTER_NUMBER)
           do
             CONTEXTD=$CONTEXTD,kind-cmesh$i
@@ -97,6 +100,7 @@ jobs:
         run: |
           CONTEXTD="kind-cmesh2"
           CLUSTER_NUMBER=${{ matrix.clusters }}
+          CONNECTION_MODE=${{ matrix.connection_mode }}
           for i in $(seq 3 $CLUSTER_NUMBER)
           do
             CONTEXTD=$CONTEXTD,kind-cmesh$i
