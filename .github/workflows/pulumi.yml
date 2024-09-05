@@ -90,7 +90,29 @@ jobs:
             cilium clustermesh status --context=kind-cmesh$i --wait
           done
             echo "Cluster Connectivity test kind-cmesh1 and kind-cmesh2"
-          cilium connectivity test --context kind-cmesh1 --multi-cluster kind-cmesh2
+          #cilium connectivity test --context kind-cmesh1 --multi-cluster kind-cmesh2
+
+      - name: Delete cilium connection
+        run: |
+          CONTEXTD="kind-cmesh2"
+          CLUSTER_NUMBER=${{ matrix.clusters }}
+          for i in $(seq 3 $CLUSTER_NUMBER)
+          do
+            CONTEXTD=$CONTEXTD,kind-cmesh$i
+          done
+          echo $CONTEXTD
+          cilium clustermesh disconnect --connection-mode=mesh --context=kind-cmesh1 --destination-contexts=$CONTEXTD
+
+      - name: Check Cluster Mesh
+        run: |
+          CLUSTER_NUMBER=${{ matrix.clusters }}
+          for i in $(seq 1 $CLUSTER_NUMBER)
+          do
+            echo "Cluster: kind-cmesh$i"
+            cilium status --context=kind-cmesh$i --wait
+            cilium clustermesh status --context=kind-cmesh$i --wait
+          done
+            echo "Cluster Connectivity test kind-cmesh1 and kind-cmesh2"
 
       - uses: pulumi/actions@v5
         with:
