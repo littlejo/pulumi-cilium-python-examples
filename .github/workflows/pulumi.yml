@@ -1,6 +1,7 @@
 name: Pulumi
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
+  CONNECTION_MODE: "mesh"
 on:
   push:
     branches:
@@ -78,7 +79,7 @@ jobs:
             CONTEXTD=$CONTEXTD,kind-cmesh$i
           done
           echo $CONTEXTD
-          cilium clustermesh connect --connection-mode=mesh --context=kind-cmesh1 --destination-contexts=$CONTEXTD
+          cilium clustermesh connect --connection-mode=$CONNECTION_MODE --context=kind-cmesh1 --destination-contexts=$CONTEXTD
 
       - name: Check Cluster Mesh
         run: |
@@ -101,7 +102,7 @@ jobs:
             CONTEXTD=$CONTEXTD,kind-cmesh$i
           done
           echo $CONTEXTD
-          cilium clustermesh disconnect --connection-mode=mesh --context=kind-cmesh1 --destination-contexts=$CONTEXTD
+          cilium clustermesh disconnect --connection-mode=$CONNECTION_MODE --context=kind-cmesh1 --destination-contexts=$CONTEXTD
 
       - name: Check Cluster Mesh
         run: |
