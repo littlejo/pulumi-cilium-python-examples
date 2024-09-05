@@ -1,7 +1,7 @@
 name: Pulumi
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
-  CONNECTION_MODE: "mesh"
+  CONNECTION_MODE: "bidirectional"
 on:
   push:
     branches:
