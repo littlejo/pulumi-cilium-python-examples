@@ -19,7 +19,6 @@ jobs:
         clusters:
           - 4
           - 7
-          - 10
         connection_mode:
           - "unicast"
           - "bidirectional"
