@@ -81,7 +81,7 @@ jobs:
             CONTEXTD=$CONTEXTD,kind-cmesh$i
           done
           echo $CONTEXTD
-          cilium clustermesh connect --connection-mode=$CONNECTION_MODE --context=kind-cmesh1 --destination-contexts=$CONTEXTD
+          cilium clustermesh connect --connection-mode=$CONNECTION_MODE --context=kind-cmesh1 --destination-context=$CONTEXTD
 
       - name: Check Cluster Mesh
         run: |
@@ -105,7 +105,7 @@ jobs:
             CONTEXTD=$CONTEXTD,kind-cmesh$i
           done
           echo $CONTEXTD
-          cilium clustermesh disconnect --connection-mode=$CONNECTION_MODE --context=kind-cmesh1 --destination-contexts=$CONTEXTD
+          cilium clustermesh disconnect --connection-mode=$CONNECTION_MODE --context=kind-cmesh1 --destination-context=$CONTEXTD
 
       - name: Check Cluster Mesh
         run: |
