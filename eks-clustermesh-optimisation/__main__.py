@@ -3,7 +3,6 @@ import pulumi_aws_native as aws_native
 import pulumi_aws as aws_tf
 from pulumi_command import local
 import littlejo_cilium as cilium
-import itertools
 import ipaddress
 
 
@@ -29,34 +28,6 @@ spec:
 
 --MIMEBOUNDARY--
 """)
-
-def combinlist(seq):
-    return list(itertools.combinations(seq, 2))
-
-def intersection(ll, la):
-    res = []
-    flat_res = []
-    for l in ll:
-        if list(set(l) & set(la)) == [] and list(set(flat_res) & set(l)) == []:
-            res += [l]
-            flat_res += [l[0], l[1]]
-
-    return [la] + res
-
-def combi_optimization(connections_list):
-    intersect = []
-    res = []
-    flat_res = []
-    connections_list_cst = connections_list[:]
-
-    for conn in connections_list_cst:
-        if conn in connections_list:
-           intersect = intersection(connections_list, conn)
-           for i in intersect:
-               connections_list.remove(i)
-           res += [intersect]
-           flat_res += intersect
-    return (flat_res, res)
 
 def tags_format(tags_dict):
     return [ {'key': k, 'value': v} for k, v in tags_dict.items() ]
@@ -320,9 +291,10 @@ class Cilium:
    def cmesh_enable(self, service_type):
        self.cmesh = cilium.Clustermesh(f"cilium-cmesh-enable-{self.k8s_name}", service_type=service_type, opts=pulumi.ResourceOptions(parent=self.deploy, providers=[self.provider])),
 
-   def cmesh_connection(self, name, destination_context=None, depends_on=[]):
+   def cmesh_connection(self, name, destination_contexts=None, connection_mode="bidirectional", depends_on=[]):
        self.cmesh_connect = cilium.ClustermeshConnection(f"cilium-cmesh-connect-{name}",
-                                                         destination_context=destination_context,
+                                                         destination_contexts=destination_contexts,
+                                                         connection_mode=connection_mode,
                                                          opts=pulumi.ResourceOptions(parent=self.provider,
                                                                                      depends_on=depends_on,
                                                                                      providers=[self.provider])
@@ -483,8 +455,8 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
     kubeconfigs = []
     for i in cluster_ids:
         cilium_sets = [
-                             f"cluster.name=cmesh{i}",
-                             f"cluster.id={i}",
+                             f"cluster.name=cmesh{i+1}",
+                             f"cluster.id={i+1}",
                              f"egressMasqueradeInterfaces={interfaces}",
                              f"operator.replicas=1",
                              f'ipam.mode=cluster-pool',
@@ -519,33 +491,13 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
 
     return cmesh_list, kubeconfig_global
 
-def create_connections():
-    null = []
-    cmesh_connect = []
-    depends_on = []
-    l = 0
-    k = 0
-    connections_list = combinlist(cluster_ids)
-    flat_connections_list, connect_list = combi_optimization(connections_list)
-    for connections in connect_list:
-        null += [local.Command(f"cmd-null-connect-{l}", opts=pulumi.ResourceOptions(depends_on=cmesh_list, parent=kubeconfig_global))]
-        for conn in connections:
-            i = conn[0]
-            j = conn[1]
-            cilium_connect = Cilium(f"cmesh-{k}", config_path=f"./kubeconfig.yaml", parent=null[l], context=f"eksCluster-{j}", depends_on=kubeconfig_global)
-            cilium_connect.cmesh_connection(f"{i}-{j}", destination_context=f"eksCluster-{i}", depends_on=depends_on)
-            cmesh_connect += [cilium_connect.cmesh_connect]
-            k += 1
-        depends_on += cmesh_connect + null
-        l += 1
-
 #Main
 config = pulumi.Config()
 try:
     cluster_number = int(config.require("clusterNumber"))
 except:
     cluster_number = 4
-cluster_ids = list(range(1, cluster_number+1))
+cluster_ids = list(range(cluster_number))
 
 region = aws_tf.config.region
 azs = [f"{region}a", f"{region}b"]
@@ -582,4 +534,5 @@ cmesh_list, kubeconfig_global = create_eks(null_eks,
                                            [ec2_sg.get_id()],
                                            ec2_role.get_profile_name(),
                                           )
-create_connections()
+cilium_connect = Cilium(f"cmesh", config_path=f"./kubeconfig.yaml", context=f"eksCluster-0", depends_on=kubeconfig_global)
+cilium_connect.cmesh_connection(f"cmesh-connect", destination_contexts=[f"eksCluster-{i}" for i in cluster_ids if i !=0], depends_on=kubeconfig_global)

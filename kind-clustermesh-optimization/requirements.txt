@@ -1,3 +1,0 @@
-pulumi>=3
-littlejo-cilium==0.1.4
-pulumi-command
