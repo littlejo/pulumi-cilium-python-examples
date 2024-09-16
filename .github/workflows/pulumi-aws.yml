@@ -93,18 +93,19 @@ jobs:
           stack-name: dev
           cloud-url: file://~
 
-      #TODO
-      #- name: Check Cluster Mesh
-      #  run: |
-      #    export KUBECONFIG=./kubeconfig.yaml
-      #    for i in $(seq 1 $CLUSTER_NUMBER)
-      #    do
-      #      echo "Cluster: kind-cmesh$i"
-      #      cilium status --context=kind-cmesh$i --wait
-      #      cilium clustermesh status --context=kind-cmesh$i --wait
-      #    done
-      #      echo "Cluster Connectivity test kind-cmesh1 and kind-cmesh2"
-      #    cilium connectivity test --context kind-cmesh1 --multi-cluster kind-cmesh2
+      - name: Check Cluster Mesh
+        if: steps.set_output.outputs.status == 'proceed'
+        run: |
+          export KUBECONFIG=./kubeconfig.yaml
+          CLUSTER_NUMBER=${{ matrix.clusters }}
+          for i in $(seq 0 $((CLUSTER_NUMBER - 1)))
+          do
+            echo "Cluster: eksCluster-$i"
+            cilium status --context=eksCluster-$i --wait
+            cilium clustermesh status --context=eksCluster-$i --wait
+          done
+            echo "Cluster Connectivity test eksCluster-0 and eksCluster-1"
+          cilium connectivity test --context eksCluster-0 --multi-cluster eksCluster-1
 
       - name: Remove cilium Pulumi resource
         if: steps.set_output.outputs.status == 'proceed'
