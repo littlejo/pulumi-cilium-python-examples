@@ -50,7 +50,7 @@ jobs:
         run: |
           git clone https://github.com/littlejo/cilium.git
           cd cilium
-          git checkout fix-cilium-cli-clustermesh-remote-contexts-mesh
+          git checkout fix-cilium-cli-clustermesh-remote-context-mesh
           cd cilium-cli
           make
           sudo install -m 0755 -d /usr/local/bin
