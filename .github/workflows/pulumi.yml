@@ -23,6 +23,13 @@ jobs:
           - "unicast"
           - "bidirectional"
           - "mesh"
+        parallel:
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          - 7
     name: Cluster Mesh Kind
     runs-on: ubuntu-latest
     defaults:
@@ -50,7 +57,7 @@ jobs:
         run: |
           git clone https://github.com/littlejo/cilium.git
           cd cilium
-          git checkout fix-cilium-cli-clustermesh-remote-context-mesh
+          git checkout cilium-clustermesh-parallel
           cd cilium-cli
           make
           sudo install -m 0755 -d /usr/local/bin
@@ -76,12 +83,13 @@ jobs:
           CONTEXTD="kind-cmesh2"
           CLUSTER_NUMBER=${{ matrix.clusters }}
           CONNECTION_MODE=${{ matrix.connection_mode }}
+          PARALLEL=${{ matrix.parallel }}
           for i in $(seq 3 $CLUSTER_NUMBER)
           do
             CONTEXTD=$CONTEXTD,kind-cmesh$i
           done
           echo $CONTEXTD
-          cilium clustermesh connect --connection-mode=$CONNECTION_MODE --context=kind-cmesh1 --destination-context=$CONTEXTD
+          cilium clustermesh connect --connection-mode=$CONNECTION_MODE --parallel=$PARALLEL --context=kind-cmesh1 --destination-context=$CONTEXTD
 
       - name: Check Cluster Mesh
         run: |
