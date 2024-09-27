@@ -456,7 +456,7 @@ def create_roles(null_sec, aws, aws_tf, profile="", region=""):
     ec2_role.create_profile()
     return eks_role, ec2_role
 
-def create_eks(null_eks, aws, aws_tf, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids, ec2_profile_name, cluster_number, profile="", region=""):
+def create_eks(null_eks, aws, aws_tf, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids, ec2_profile_name, index, cluster_number,profile="", region=""):
     cmesh_list = []
     kubeconfigs = []
     contexts = []
@@ -465,13 +465,13 @@ def create_eks(null_eks, aws, aws_tf, role_arn, subnet_ids, sg_ids, ec2_role_arn
         context = f"eksCluster-{profile}-{i}"
         contexts += [context]
         cilium_sets = [
-                             f"cluster.name=cmesh-{profile}-{i+1}",
-                             f"cluster.id={i+1}", #TOFIX
+                             f"cluster.name=cmesh-{profile}-{index+i+1}",
+                             f"cluster.id={index+i+1}",
                              f"egressMasqueradeInterfaces={interfaces}",
                              f"operator.replicas=1",
                              f'ipam.mode=cluster-pool',
                              f'routingMode=tunnel',
-                             'ipam.operator.clusterPoolIPv4PodCIDRList={10.%s.0.0/16}' % i, #TOFIX
+                             'ipam.operator.clusterPoolIPv4PodCIDRList={10.%s.%s.0/24}' % (index + i // 256, i % 256),
         ]
         eks_cluster = EKS(context,
                           aws,
@@ -506,12 +506,6 @@ def create_sg(null_sec, aws, vpc_id="", profile="", region=""):
                                                              ])
     return eks_sg, ec2_sg
 
-#config = pulumi.Config()
-#try:
-#    cluster_number = int(config.require("clusterNumber"))
-#except:
-#    cluster_number = 4
-#cluster_ids = list(range(cluster_number))
 kubernetes_version = "1.30"
 arch = "arm"
 
@@ -559,7 +553,9 @@ data = {
 }
 
 kubeconfigs_list = []
-contexts_dict = {}
+contexts_list = []
+cmeshes_list = []
+cluster_number_index = 0
 
 for k, v in data.items():
     vpc = create_vpc(v["null"], v["pvd1"], v["pvd2"], cidr=v["cidr"], **v["profile-region"])
@@ -574,26 +570,30 @@ for k, v in data.items():
                                                ec2_role.get_arn(),
                                                [ec2_sg.get_id()],
                                                ec2_role.get_profile_name(),
+                                               cluster_number_index,
                                                v["cluster_number"],
                                                **v["profile-region"]
                                               )
+    if cluster_number_index == 0:
+        cluster_number_index += v["cluster_number"] + 1
     kubeconfigs_list += kubeconfigs
-    contexts_dict[k] = contexts
+    contexts_list += contexts
+    cmeshes_list += cmesh_list
 
-#TOFIX: VPC_PEER
+#TOFIX:
+#* VPC_PEER
+#* ROUTE TABLE
 
 kubeconfig_global = local.Command(f"cmd-kubeconfig-connect",
         create=f"kubectl config view --raw > ./kubeconfig.yaml",
         delete=f"rm -f kubeconfig.yaml",
         environment={"KUBECONFIG": ":".join(kubeconfigs_list)},
-        opts=pulumi.ResourceOptions(depends_on=cmesh_list), #TOFIX
+        opts=pulumi.ResourceOptions(depends_on=cmeshes_list),
     )
 
-contexts_list = list(contexts_dict.values())
-contexts = contexts_list[0] + contexts_list[1]
-local_context = contexts[0]
-remote_context = contexts[1:]
+local_context = contexts_list[0]
+remote_contexts = contexts_list[1:]
 
 #pulumi.log.info(f"local_context: {local_context}, type: {type(local_context)}")
 cilium_connect = Cilium(f"cmesh", config_path=f"./kubeconfig.yaml", context=local_context, depends_on=[kubeconfig_global])
-cilium_connect.cmesh_connection(f"cmesh-connect", destination_contexts=remote_context, depends_on=[kubeconfig_global])
+cilium_connect.cmesh_connection(f"cmesh-connect", destination_contexts=remote_contexts, depends_on=[kubeconfig_global])
