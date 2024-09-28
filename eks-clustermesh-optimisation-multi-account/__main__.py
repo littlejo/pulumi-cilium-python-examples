@@ -64,6 +64,9 @@ class VPC:
    def get_subnet_ids(self):
        return [self.private_subnet1.subnet_id, self.private_subnet2.subnet_id]
 
+   def get_pv_rt_id(self):
+       return self.rt_pv.route_table_id
+
    def create_subnets(self):
        tags = {
          "Name": f"subnet-public-{self.name}-1"
@@ -448,7 +451,7 @@ def create_vpc(null_vpc, aws, aws_tf, cidr="", profile="", region=""):
     vpc.create_internet_gateway()
     vpc.create_nat_gateway()
     vpc.create_route_table()
-    return vpc
+    return vpc, vpc.get_pv_rt_id()
 
 def create_roles(null_sec, aws, aws_tf, profile="", region=""):
     eks_role = IAMRole(f"eks-cp-{profile}", aws, aws_tf, trust_identity="eks.amazonaws.com", managed_policies=["AmazonEKSClusterPolicy"], profile=profile, region=region, parent=null_sec)
@@ -555,10 +558,12 @@ data = {
 kubeconfigs_list = []
 contexts_list = []
 cmeshes_list = []
+vpc_ids = {}
 cluster_number_index = 0
+pv_rt_ids = {}
 
 for k, v in data.items():
-    vpc = create_vpc(v["null"], v["pvd1"], v["pvd2"], cidr=v["cidr"], **v["profile-region"])
+    vpc, rt_id = create_vpc(v["null"], v["pvd1"], v["pvd2"], cidr=v["cidr"], **v["profile-region"])
     eks_role, ec2_role = create_roles(v["null"], v["pvd1"], v["pvd2"], **v["profile-region"])
     eks_sg, ec2_sg = create_sg(v["null"], v["pvd1"], vpc.get_vpc_id(), **v["profile-region"])
 
@@ -576,13 +581,41 @@ for k, v in data.items():
                                               )
     if cluster_number_index == 0:
         cluster_number_index += v["cluster_number"] + 1
+    vpc_ids[k] = vpc.get_vpc_id()
+    pv_rt_ids[k] = rt_id
     kubeconfigs_list += kubeconfigs
     contexts_list += contexts
     cmeshes_list += cmesh_list
 
-#TOFIX:
-#* VPC_PEER
-#* ROUTE TABLE
+peer = aws.ec2.VpcPeeringConnection("vpc-peering",
+    peer_vpc_id=vpc_ids["acc2"],
+    vpc_id=vpc_ids["acc1"],
+    peer_region=acg2["region"],
+    opts=pulumi.ResourceOptions(providers=[aws_tf1])
+    )
+
+peer_vpc_peering_connection_accepter = aws.ec2.VpcPeeringConnectionAccepter("peer",
+    vpc_peering_connection_id=peer.id,
+    auto_accept=True,
+    tags={
+        "Side": "Accepter",
+    },
+    opts=pulumi.ResourceOptions(providers=[aws_tf2])
+    )
+
+r = aws_native.ec2.Route(f"vpc-rt-r-private-peer-acc1",
+                          route_table_id=pv_rt_ids["acc1"],
+                          destination_cidr_block=data["acc2"]["cidr"],
+                          vpc_peering_connection_id=peer.id,
+                          opts=pulumi.ResourceOptions(parent=peer_vpc_peering_connection_accepter, providers=[aws1]),
+                         )
+
+r = aws_native.ec2.Route(f"vpc-rt-r-private-peer-acc2",
+                          route_table_id=pv_rt_ids["acc2"],
+                          destination_cidr_block=data["acc1"]["cidr"],
+                          vpc_peering_connection_id=peer.id,
+                          opts=pulumi.ResourceOptions(parent=peer_vpc_peering_connection_accepter, providers=[aws2]),
+                         )
 
 kubeconfig_global = local.Command(f"cmd-kubeconfig-connect",
         create=f"kubectl config view --raw > ./kubeconfig.yaml",
@@ -596,4 +629,4 @@ remote_contexts = contexts_list[1:]
 
 #pulumi.log.info(f"local_context: {local_context}, type: {type(local_context)}")
 cilium_connect = Cilium(f"cmesh", config_path=f"./kubeconfig.yaml", context=local_context, depends_on=[kubeconfig_global])
-cilium_connect.cmesh_connection(f"cmesh-connect", destination_contexts=remote_contexts, depends_on=[kubeconfig_global])
+cilium_connect.cmesh_connection(f"cmesh-connect", destination_contexts=remote_contexts, connection_mode="mesh", depends_on=[kubeconfig_global])
