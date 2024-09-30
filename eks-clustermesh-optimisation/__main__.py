@@ -291,10 +291,11 @@ class Cilium:
    def cmesh_enable(self, service_type):
        self.cmesh = cilium.Clustermesh(f"cilium-cmesh-enable-{self.k8s_name}", service_type=service_type, opts=pulumi.ResourceOptions(parent=self.deploy, providers=[self.provider])),
 
-   def cmesh_connection(self, name, destination_contexts=None, connection_mode="bidirectional", depends_on=[]):
+   def cmesh_connection(self, name, destination_contexts=None, connection_mode="mesh", parallel=2, depends_on=[]):
        self.cmesh_connect = cilium.ClustermeshConnection(f"cilium-cmesh-connect-{name}",
                                                          destination_contexts=destination_contexts,
                                                          connection_mode=connection_mode,
+                                                         parallel=parallel,
                                                          opts=pulumi.ResourceOptions(parent=self.provider,
                                                                                      depends_on=depends_on,
                                                                                      providers=[self.provider])
@@ -497,6 +498,12 @@ try:
     cluster_number = int(config.require("clusterNumber"))
 except:
     cluster_number = 4
+
+try:
+    parallel = int(config.require("parallel"))
+except:
+    parallel = 4
+
 cluster_ids = list(range(cluster_number))
 
 region = aws_tf.config.region
@@ -535,4 +542,4 @@ cmesh_list, kubeconfig_global = create_eks(null_eks,
                                            ec2_role.get_profile_name(),
                                           )
 cilium_connect = Cilium(f"cmesh", config_path=f"./kubeconfig.yaml", context=f"eksCluster-0", depends_on=kubeconfig_global)
-cilium_connect.cmesh_connection(f"cmesh-connect", destination_contexts=[f"eksCluster-{i}" for i in cluster_ids if i !=0], depends_on=kubeconfig_global)
+cilium_connect.cmesh_connection(f"cmesh-connect", parallel=parallel, destination_contexts=[f"eksCluster-{i}" for i in cluster_ids if i !=0], depends_on=kubeconfig_global)

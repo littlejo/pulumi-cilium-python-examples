@@ -40,5 +40,6 @@ for i in cluster_ids:
 
 cmesh_connect = cilium.ClustermeshConnection(f"cmeshConnect",
                                               destination_contexts=[f"kind-cmesh{i}" for i in cluster_ids if i !=0],
-                                              connection_mode="bidirectional",
+                                              connection_mode="mesh",
+                                              parallel=3,
                                               opts=pulumi.ResourceOptions(depends_on=[c[i]["cmesh"] for i in cluster_ids], providers=[c[0]['provider']]))
