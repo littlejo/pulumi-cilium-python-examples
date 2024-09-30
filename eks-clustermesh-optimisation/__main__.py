@@ -294,7 +294,8 @@ class Cilium:
    def cmesh_connection(self, name, destination_contexts=None, connection_mode="bidirectional", depends_on=[]):
        self.cmesh_connect = cilium.ClustermeshConnection(f"cilium-cmesh-connect-{name}",
                                                          destination_contexts=destination_contexts,
-                                                         connection_mode=connection_mode,
+                                                         connection_mode="mesh",
+                                                         parallel=3,
                                                          opts=pulumi.ResourceOptions(parent=self.provider,
                                                                                      depends_on=depends_on,
                                                                                      providers=[self.provider])
