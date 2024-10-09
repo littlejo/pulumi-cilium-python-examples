@@ -25,7 +25,7 @@ jobs:
     - name: Preparation of Check Cluster Mesh
       run: |
         cd check-cilium-clustermesh/scripts
-        go test -c -o /tmp/cilium-clustermesh-global-services cilium-clustermesh-global-services_test.go
+        go test -c -o /tmp/cilium-clustermesh-global-services cilium-clustermesh-global-services_headless_test.go
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
