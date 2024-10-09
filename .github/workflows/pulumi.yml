@@ -28,6 +28,11 @@ jobs:
         go mod init scripts
         go mod tidy
         go test -c -o test-binary cilium-clustermesh-global-services.go
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: cilium-clustermesh-global-services
+        path: test-binary
     - name: Clone check scripts
       run: |
         cd check-cilium-clustermesh/web-server/docker/
@@ -84,31 +89,22 @@ jobs:
           stack-name: dev
           cloud-url: file://~
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.23.2'
-
       - name: Check Cluster Mesh
         run: |
           git clone https://github.com/littlejo/check-cilium-clustermesh
           cd check-cilium-clustermesh/scripts
           bash check-cilium.sh
-          go mod init script
-          go mod tidy
-          go test -v cilium-clustermesh-global-services.go
 
-      #- name: Check Cluster Mesh
-      #  run: |
-      #    CLUSTER_NUMBER=${{ matrix.clusters }}
-      #    for i in $(seq 0 $((CLUSTER_NUMBER - 1)))
-      #    do
-      #      echo "Cluster: kind-cmesh$i"
-      #      helm get values cilium -n kube-system --kube-context=kind-cmesh$i
-      #      cilium status --context=kind-cmesh$i --wait
-      #      cilium clustermesh status --context=kind-cmesh$i --wait
-      #    done
-      #      echo "Cluster Connectivity test kind-cmesh0 and kind-cmesh1"
-      #    cilium connectivity test --context kind-cmesh0 --multi-cluster kind-cmesh1
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: cilium-clustermesh-global-services
+          path: check-cilium-clustermesh/scripts/cilium-clustermesh-global-services
+
+      - name: Check Cluster Mesh
+        run: |
+          cd check-cilium-clustermesh/scripts
+          ./cilium-clustermesh-global-services -test.v
 
       - uses: pulumi/actions@v5
         with:
