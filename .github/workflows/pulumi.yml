@@ -27,12 +27,12 @@ jobs:
         cd check-cilium-clustermesh/scripts
         go mod init scripts
         go mod tidy
-        go test -c -o test-binary cilium-clustermesh-global-services.go
+        go test -c -o /tmp/test-binary cilium-clustermesh-global-services.go
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
         name: cilium-clustermesh-global-services
-        path: check-cilium-clustermesh/scripts/test-binary
+        path: /tmp/test-binary
     - name: Clone check scripts
       run: |
         cd check-cilium-clustermesh/web-server/docker/
