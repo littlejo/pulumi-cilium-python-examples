@@ -27,7 +27,7 @@ jobs:
         cd check-cilium-clustermesh/scripts
         go mod init scripts
         go mod tidy
-        go test -c -o /tmp/test-binary cilium-clustermesh-global-services.go
+        go test -c -o /tmp/test-binary cilium-clustermesh-global-services_test.go
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
