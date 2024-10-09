@@ -32,7 +32,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: cilium-clustermesh-global-services
-        path: test-binary
+        path: check-cilium-clustermesh/scripts/test-binary
     - name: Clone check scripts
       run: |
         cd check-cilium-clustermesh/web-server/docker/
