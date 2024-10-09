@@ -99,7 +99,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: cilium-clustermesh-global-services
-          path: check-cilium-clustermesh/scripts/cilium-clustermesh-global-services
+          path: check-cilium-clustermesh/scripts/
 
       - name: Check Cluster Mesh
         run: |
