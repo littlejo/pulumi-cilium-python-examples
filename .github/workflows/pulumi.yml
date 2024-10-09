@@ -13,12 +13,18 @@ jobs:
     name: Docker Build
     runs-on: ubuntu-latest
     steps:
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
     - name: Preparation of Check Cluster Mesh
       run: |
         git clone https://github.com/littlejo/check-cilium-clustermesh
         cd check-cilium-clustermesh/web-server/docker/
-        docker build -t ttl.sh/littlejo-webapp:2h --push .
-        #docker buildx build --platform linux/arm64,linux/amd64 -t ttl.sh/littlejo-webapp:2h --push .
+        docker buildx build --platform linux/arm64,linux/amd64 -t ttl.sh/littlejo-webapp:2h --push .
+        #docker build -t ttl.sh/littlejo-webapp:2h --push .
   kind-clustermesh:
     strategy:
       fail-fast: false
@@ -71,11 +77,14 @@ jobs:
           stack-name: dev
           cloud-url: file://~
 
+      - uses: actions/setup-go@v5
+
       - name: Check Cluster Mesh
         run: |
           git clone https://github.com/littlejo/check-cilium-clustermesh
           cd check-cilium-clustermesh/scripts
           bash check-cilium.sh
+          go test -v cilium-clustermesh-global-services.go
 
       #- name: Check Cluster Mesh
       #  run: |
