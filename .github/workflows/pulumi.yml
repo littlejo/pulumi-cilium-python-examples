@@ -72,6 +72,10 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
+      - name: Retrieve check scripts
+        run: |
+          git clone https://github.com/littlejo/check-cilium-clustermesh &
+
       - name: Installing dependencies 📦️
         run: pip install -r requirements.txt
 
@@ -89,7 +93,6 @@ jobs:
 
       - name: Check Cluster Mesh
         run: |
-          git clone https://github.com/littlejo/check-cilium-clustermesh
           cd check-cilium-clustermesh/scripts
           bash check-cilium.sh
 
