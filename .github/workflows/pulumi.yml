@@ -33,7 +33,7 @@ jobs:
       - uses: cilium/cilium-cli@404d52692f62eebb7211fdacd114848995ada1b7
         with:
           skip-build: true
-          release-version: v0.16.10
+          release-version: v0.16.19
       - name: Setup Python ✨
         uses: actions/setup-python@v5
         with:
@@ -63,16 +63,22 @@ jobs:
 
       - name: Check Cluster Mesh
         run: |
-          CLUSTER_NUMBER=${{ matrix.clusters }}
-          for i in $(seq 0 $((CLUSTER_NUMBER - 1)))
-          do
-            echo "Cluster: kind-cmesh$i"
-            helm get values cilium -n kube-system --kube-context=kind-cmesh$i
-            cilium status --context=kind-cmesh$i --wait
-            cilium clustermesh status --context=kind-cmesh$i --wait
-          done
-            echo "Cluster Connectivity test kind-cmesh0 and kind-cmesh1"
-          cilium connectivity test --context kind-cmesh0 --multi-cluster kind-cmesh1
+          git clone https://github.com/littlejo/check-cilium-clustermesh
+          cd check-cilium-clustermesh/scripts
+          bash check-cilium.sh
+
+      #- name: Check Cluster Mesh
+      #  run: |
+      #    CLUSTER_NUMBER=${{ matrix.clusters }}
+      #    for i in $(seq 0 $((CLUSTER_NUMBER - 1)))
+      #    do
+      #      echo "Cluster: kind-cmesh$i"
+      #      helm get values cilium -n kube-system --kube-context=kind-cmesh$i
+      #      cilium status --context=kind-cmesh$i --wait
+      #      cilium clustermesh status --context=kind-cmesh$i --wait
+      #    done
+      #      echo "Cluster Connectivity test kind-cmesh0 and kind-cmesh1"
+      #    cilium connectivity test --context kind-cmesh0 --multi-cluster kind-cmesh1
 
       - uses: pulumi/actions@v5
         with:
