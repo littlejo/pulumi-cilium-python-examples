@@ -17,7 +17,8 @@ jobs:
       run: |
         git clone https://github.com/littlejo/check-cilium-clustermesh
         cd check-cilium-clustermesh/web-server/docker/
-        docker buildx build --platform linux/arm,linux/arm64,linux/amd64 -t ttl.sh/littlejo-webapp:2h --push .
+        docker build -t ttl.sh/littlejo-webapp:2h --push .
+        #docker buildx build --platform linux/arm64,linux/amd64 -t ttl.sh/littlejo-webapp:2h --push .
   kind-clustermesh:
     strategy:
       fail-fast: false
