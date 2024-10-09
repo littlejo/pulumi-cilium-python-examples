@@ -105,7 +105,12 @@ jobs:
           cd check-cilium-clustermesh/scripts
           chmod a+x ./cilium-clustermesh-global-services
           ./cilium-clustermesh-global-services -test.v
-          cat /tmp/runner-*.log
+          for f in $(ls /tmp/runner-*.log)
+          do
+              echo $f
+              cat $f
+              echo ""
+          done
 
       - uses: pulumi/actions@v5
         with:
