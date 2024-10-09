@@ -78,6 +78,8 @@ jobs:
           cloud-url: file://~
 
       - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.2'
 
       - name: Check Cluster Mesh
         run: |
