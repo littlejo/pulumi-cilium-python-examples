@@ -19,16 +19,19 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Preparation of Check Cluster Mesh
+    - name: Clone check scripts
       run: |
         git clone https://github.com/littlejo/check-cilium-clustermesh
-        cd check-cilium-clustermesh/web-server/docker/
-        docker buildx build --platform linux/arm64,linux/amd64 -t ttl.sh/littlejo-webapp:2h --push .
-    - name: Check Cluster Mesh
+    - name: Preparation of Check Cluster Mesh
       run: |
         cd check-cilium-clustermesh/scripts
         go mod init scripts
+        go mod tidy
         go test -c -o test-binary cilium-clustermesh-global-services.go
+    - name: Clone check scripts
+      run: |
+        cd check-cilium-clustermesh/web-server/docker/
+        docker buildx build --platform linux/arm64,linux/amd64 -t ttl.sh/littlejo-webapp:2h --push .
   kind-clustermesh:
     strategy:
       fail-fast: false
@@ -91,6 +94,7 @@ jobs:
           cd check-cilium-clustermesh/scripts
           bash check-cilium.sh
           go mod init script
+          go mod tidy
           go test -v cilium-clustermesh-global-services.go
 
       #- name: Check Cluster Mesh
