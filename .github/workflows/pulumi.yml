@@ -9,6 +9,15 @@ on:
     paths-ignore:
       - '*/README.md'
 jobs:
+  build-test:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Preparation of Check Cluster Mesh
+        run: |
+          git clone https://github.com/littlejo/check-cilium-clustermesh
+          cd check-cilium-clustermesh/web-server/docker/
+          docker buildx build --platform linux/arm,linux/arm64,linux/amd64 -t ttl.sh/littlejo-webapp:2h --push .
   kind-clustermesh:
     strategy:
       fail-fast: false

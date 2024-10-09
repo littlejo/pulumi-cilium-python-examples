@@ -10,7 +10,7 @@ def cilium_clustermesh(i, kind):
             f"cluster.id={i+1}",
             "ipam.mode=kubernetes",
         ],
-        version="1.15.5",
+        version="1.16.2",
         opts=pulumi.ResourceOptions(providers=[cmesh_provider], parent=cmesh_provider),
     )
     return {
