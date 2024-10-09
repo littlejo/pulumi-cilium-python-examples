@@ -25,13 +25,13 @@ jobs:
     - name: Preparation of Check Cluster Mesh
       run: |
         cd check-cilium-clustermesh/scripts
-        go test -c -o /tmp/test-binary cilium-clustermesh-global-services_test.go
+        go test -c -o /tmp/cilium-clustermesh-global-services cilium-clustermesh-global-services_test.go
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
         name: cilium-clustermesh-global-services
-        path: /tmp/test-binary
-    - name: Clone check scripts
+        path: /tmp/cilium-clustermesh-global-services
+    - name: Docker build
       run: |
         cd check-cilium-clustermesh/web-server/docker/
         docker buildx build --platform linux/arm64,linux/amd64 -t ttl.sh/littlejo-webapp:2h --push .
