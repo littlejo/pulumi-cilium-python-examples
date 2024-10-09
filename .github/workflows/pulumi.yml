@@ -9,6 +9,32 @@ on:
     paths-ignore:
       - '*/README.md'
 jobs:
+  build-test:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Clone check scripts
+      run: |
+        git clone https://github.com/littlejo/check-cilium-clustermesh
+    - name: Preparation of Check Cluster Mesh
+      run: |
+        cd check-cilium-clustermesh/scripts
+        go test -c -o /tmp/cilium-clustermesh-global-services
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: cilium-clustermesh-global-services
+        path: /tmp/cilium-clustermesh-global-services
+    - name: Docker build
+      run: |
+        cd check-cilium-clustermesh/web-server/docker/
+        docker buildx build --platform linux/arm64,linux/amd64 -t ttl.sh/littlejo-webapp:2h --push .
   kind-clustermesh:
     strategy:
       fail-fast: false
@@ -33,7 +59,7 @@ jobs:
       - uses: cilium/cilium-cli@404d52692f62eebb7211fdacd114848995ada1b7
         with:
           skip-build: true
-          release-version: v0.16.10
+          release-version: v0.16.19
       - name: Setup Python ✨
         uses: actions/setup-python@v5
         with:
@@ -45,6 +71,10 @@ jobs:
           sudo rm -rf /opt/ghc
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      - name: Retrieve check scripts
+        run: |
+          git clone https://github.com/littlejo/check-cilium-clustermesh &
 
       - name: Installing dependencies 📦️
         run: pip install -r requirements.txt
@@ -63,16 +93,27 @@ jobs:
 
       - name: Check Cluster Mesh
         run: |
-          CLUSTER_NUMBER=${{ matrix.clusters }}
-          for i in $(seq 0 $((CLUSTER_NUMBER - 1)))
+          cd check-cilium-clustermesh/scripts
+          bash check-cilium.sh
+
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: cilium-clustermesh-global-services
+          path: /tmp/
+
+      - name: Check Cluster Mesh
+        run: |
+          mv /tmp/cilium-clustermesh-global-services check-cilium-clustermesh/scripts
+          cd check-cilium-clustermesh/scripts
+          chmod a+x ./cilium-clustermesh-global-services
+          ./cilium-clustermesh-global-services -test.v
+          for f in $(ls /tmp/runner-*.log)
           do
-            echo "Cluster: kind-cmesh$i"
-            helm get values cilium -n kube-system --kube-context=kind-cmesh$i
-            cilium status --context=kind-cmesh$i --wait
-            cilium clustermesh status --context=kind-cmesh$i --wait
+              echo $f
+              cat $f
+              echo ""
           done
-            echo "Cluster Connectivity test kind-cmesh0 and kind-cmesh1"
-          cilium connectivity test --context kind-cmesh0 --multi-cluster kind-cmesh1
 
       - uses: pulumi/actions@v5
         with:
