@@ -24,7 +24,11 @@ jobs:
         git clone https://github.com/littlejo/check-cilium-clustermesh
         cd check-cilium-clustermesh/web-server/docker/
         docker buildx build --platform linux/arm64,linux/amd64 -t ttl.sh/littlejo-webapp:2h --push .
-        #docker build -t ttl.sh/littlejo-webapp:2h --push .
+    - name: Check Cluster Mesh
+      run: |
+        cd check-cilium-clustermesh/scripts
+        go mod init scripts
+        go test -c -o test-binary cilium-clustermesh-global-services.go
   kind-clustermesh:
     strategy:
       fail-fast: false
@@ -86,6 +90,7 @@ jobs:
           git clone https://github.com/littlejo/check-cilium-clustermesh
           cd check-cilium-clustermesh/scripts
           bash check-cilium.sh
+          go mod init script
           go test -v cilium-clustermesh-global-services.go
 
       #- name: Check Cluster Mesh
