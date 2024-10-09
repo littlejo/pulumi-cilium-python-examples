@@ -105,6 +105,7 @@ jobs:
           cd check-cilium-clustermesh/scripts
           chmod a+x ./cilium-clustermesh-global-services
           ./cilium-clustermesh-global-services -test.v
+          cat /tmp/runner-*.log
 
       - uses: pulumi/actions@v5
         with:
