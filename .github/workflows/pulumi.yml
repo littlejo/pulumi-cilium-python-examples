@@ -25,8 +25,6 @@ jobs:
     - name: Preparation of Check Cluster Mesh
       run: |
         cd check-cilium-clustermesh/scripts
-        go mod init scripts
-        go mod tidy
         go test -c -o /tmp/test-binary cilium-clustermesh-global-services_test.go
     - name: Upload artifact
       uses: actions/upload-artifact@v3
@@ -99,11 +97,13 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: cilium-clustermesh-global-services
-          path: check-cilium-clustermesh/scripts/
+          path: /tmp/
 
       - name: Check Cluster Mesh
         run: |
+          mv /tmp/cilium-clustermesh-global-services check-cilium-clustermesh/scripts
           cd check-cilium-clustermesh/scripts
+          chmod a+x ./cilium-clustermesh-global-services
           ./cilium-clustermesh-global-services -test.v
 
       - uses: pulumi/actions@v5
