@@ -108,7 +108,7 @@ jobs:
           cd check-cilium-clustermesh/scripts
           chmod a+x ./cilium-clustermesh-global-services
           ./cilium-clustermesh-global-services -test.v
-          for f in $(ls /tmp/runner-*.log)
+          for f in $(ls /tmp/client-*.log)
           do
               echo $f
               cat $f
