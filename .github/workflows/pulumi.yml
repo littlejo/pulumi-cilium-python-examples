@@ -24,7 +24,7 @@ jobs:
         git clone -b improve-code https://github.com/littlejo/check-cilium-clustermesh
     - name: Preparation of Check Cluster Mesh
       run: |
-        cd check-cilium-clustermesh/scripts
+        cd check-cilium-clustermesh/terratest
         go test -c -o /tmp/cilium-clustermesh-global-services
     - name: Upload artifact
       uses: actions/upload-artifact@v3
