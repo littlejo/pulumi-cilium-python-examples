@@ -32,7 +32,7 @@ jobs:
 
     - name: Clone check scripts
       run: |
-        git clone https://github.com/littlejo/check-cilium-clustermesh
+        git clone -b improve-code https://github.com/littlejo/check-cilium-clustermesh
     - name: Preparation of Check Cluster Mesh
       run: |
         cd check-cilium-clustermesh/scripts
@@ -55,13 +55,13 @@ jobs:
         dir:
           - ./eks-clustermesh-optimisation
         clusters:
-          - 3
-          - 4
-          - 5
-          - 6
-          - 7
-          - 8
           - 9
+          - 8
+          - 7
+          - 6
+          - 5
+          - 4
+          - 3
     name: Cluster Mesh EKS
     runs-on: ubuntu-latest
     defaults:
@@ -126,7 +126,7 @@ jobs:
         run: |
           cp ./kubeconfig.yaml /tmp/kubeconfig.yaml
           export KUBECONFIG=/tmp/kubeconfig.yaml
-          git clone https://github.com/littlejo/check-cilium-clustermesh
+          git clone -b improve-code https://github.com/littlejo/check-cilium-clustermesh
           cd check-cilium-clustermesh/scripts
           bash check-cilium.sh
 
