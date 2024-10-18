@@ -22,7 +22,7 @@ jobs:
 
     - name: Clone check scripts
       run: |
-        git clone -b improve-code https://github.com/littlejo/check-cilium-clustermesh
+        git clone -b improve-code3 https://github.com/littlejo/check-cilium-clustermesh
     - name: Preparation of Check Cluster Mesh
       run: |
         cd check-cilium-clustermesh/terratest
