@@ -104,10 +104,8 @@ jobs:
 
       - name: Check Cluster Mesh
         run: |
-          mv /tmp/cilium-clustermesh-global-services check-cilium-clustermesh/scripts
-          cd check-cilium-clustermesh/scripts
-          chmod a+x ./cilium-clustermesh-global-services
-          ./cilium-clustermesh-global-services -test.v
+          chmod a+x /tmp/cilium-clustermesh-global-services
+          /tmp/cilium-clustermesh-global-services -test.v
           for f in $(ls /tmp/client-*.log)
           do
               echo $f
