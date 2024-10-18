@@ -1,6 +1,7 @@
 name: Pulumi
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
+  WEBAPP_IMAGE: "ttl.sh/littlejo-webapp:2h"
 on:
   push:
     branches:
