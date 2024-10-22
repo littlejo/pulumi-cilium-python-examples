@@ -50,7 +50,7 @@ jobs:
         run: |
           wget https://github.com/littlejo/check-cilium-clustermesh/releases/download/v0.0.6/terratest_0.0.6_linux_amd64.tar.gz
           tar xvf terratest_0.0.6_linux_amd64.tar.gz
-          cp check-cilium-clustermesh /usr/local/bin
+          mv check-cilium-clustermesh /usr/local/bin
 
       - name: Retrieve check scripts
         run: |
