@@ -24,7 +24,7 @@ jobs:
           - 8
           - 9
     name: Cluster Mesh Kind
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     defaults:
       run:
         working-directory: ${{ matrix.dir }}
@@ -33,7 +33,7 @@ jobs:
       - uses: cilium/cilium-cli@404d52692f62eebb7211fdacd114848995ada1b7
         with:
           skip-build: true
-          release-version: v0.16.10
+          release-version: v0.16.19
       - name: Setup Python ✨
         uses: actions/setup-python@v5
         with:
@@ -45,6 +45,16 @@ jobs:
           sudo rm -rf /opt/ghc
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      - name: Check Cluster Mesh
+        run: |
+          version=0.0.7
+          wget https://github.com/littlejo/check-cilium-clustermesh/releases/download/v$version/cilium-clustermesh-terratest-$version-linux-amd64.tar.gz
+          tar xzvfC cilium-clustermesh-terratest-$version-linux-amd64.tar.gz /usr/local/bin
+
+      - name: Retrieve check scripts
+        run: |
+          git clone -b improve-code https://github.com/littlejo/check-cilium-clustermesh &
 
       - name: Installing dependencies 📦️
         run: pip install -r requirements.txt
@@ -63,16 +73,18 @@ jobs:
 
       - name: Check Cluster Mesh
         run: |
-          CLUSTER_NUMBER=${{ matrix.clusters }}
-          for i in $(seq 0 $((CLUSTER_NUMBER - 1)))
+          cd check-cilium-clustermesh/scripts
+          bash check-cilium.sh
+
+      - name: Check Cluster Mesh
+        run: |
+          check-cilium-clustermesh -test.v
+          for f in $(ls /tmp/client-*.log)
           do
-            echo "Cluster: kind-cmesh$i"
-            helm get values cilium -n kube-system --kube-context=kind-cmesh$i
-            cilium status --context=kind-cmesh$i --wait
-            cilium clustermesh status --context=kind-cmesh$i --wait
+              echo $f
+              cat $f
+              echo ""
           done
-            echo "Cluster Connectivity test kind-cmesh0 and kind-cmesh1"
-          cilium connectivity test --context kind-cmesh0 --multi-cluster kind-cmesh1
 
       - uses: pulumi/actions@v5
         with:

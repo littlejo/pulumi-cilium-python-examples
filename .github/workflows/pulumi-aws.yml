@@ -20,6 +20,33 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ github.event.inputs.aws_secret_id }}
 
 jobs:
+  build-test:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Clone check scripts
+      run: |
+        git clone -b improve-code https://github.com/littlejo/check-cilium-clustermesh
+    - name: Preparation of Check Cluster Mesh
+      run: |
+        cd check-cilium-clustermesh/terratest
+        go test -c -o /tmp/cilium-clustermesh-global-services
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: cilium-clustermesh-global-services
+        path: /tmp/cilium-clustermesh-global-services
+    - name: Docker build
+      run: |
+        cd check-cilium-clustermesh/web-server/docker/
+        docker buildx build --platform linux/arm64,linux/amd64 -t ttl.sh/littlejo-webapp:2h --push .
+
   kind-clustermesh:
     strategy:
       max-parallel: 1
@@ -28,13 +55,13 @@ jobs:
         dir:
           - ./eks-clustermesh-optimisation
         clusters:
-          - 3
-          - 4
-          - 5
-          - 6
-          - 7
-          - 8
           - 9
+          - 8
+          - 7
+          - 6
+          - 5
+          - 4
+          - 3
     name: Cluster Mesh EKS
     runs-on: ubuntu-latest
     defaults:
@@ -44,7 +71,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Geolocalisation
         run: |
-          geoloc="skip"
+          geoloc="proceed"
+          #geoloc="skip"
           curl ipinfo.io/$(curl checkip.amazonaws.com 2> /dev/null) 2> /dev/null | tee /tmp/geo
           if cat /tmp/geo | grep region | grep -q Virginia
           then
@@ -96,16 +124,47 @@ jobs:
       - name: Check Cluster Mesh
         if: steps.set_output.outputs.status == 'proceed'
         run: |
-          export KUBECONFIG=./kubeconfig.yaml
-          CLUSTER_NUMBER=${{ matrix.clusters }}
-          for i in $(seq 0 $((CLUSTER_NUMBER - 1)))
+          cp ./kubeconfig.yaml /tmp/kubeconfig.yaml
+          export KUBECONFIG=/tmp/kubeconfig.yaml
+          git clone -b improve-code https://github.com/littlejo/check-cilium-clustermesh
+          cd check-cilium-clustermesh/scripts
+          bash check-cilium.sh
+
+      - name: Download artifact
+        if: steps.set_output.outputs.status == 'proceed'
+        uses: actions/download-artifact@v3
+        with:
+          name: cilium-clustermesh-global-services
+          path: /tmp/
+
+      - name: Check Cluster Mesh
+        if: steps.set_output.outputs.status == 'proceed'
+        run: |
+          export KUBECONFIG=/tmp/kubeconfig.yaml
+          mv /tmp/cilium-clustermesh-global-services check-cilium-clustermesh/scripts
+          cd check-cilium-clustermesh/scripts
+          chmod a+x ./cilium-clustermesh-global-services
+          ./cilium-clustermesh-global-services -test.v
+          for f in $(ls /tmp/client-*.log)
           do
-            echo "Cluster: eksCluster-$i"
-            cilium status --context=eksCluster-$i --wait
-            cilium clustermesh status --context=eksCluster-$i --wait
+              echo $f
+              cat $f
+              echo ""
           done
-            echo "Cluster Connectivity test eksCluster-0 and eksCluster-1"
-          cilium connectivity test --context eksCluster-0 --multi-cluster eksCluster-1
+
+      #- name: Check Cluster Mesh
+      #  if: steps.set_output.outputs.status == 'proceed'
+      #  run: |
+      #    export KUBECONFIG=./kubeconfig.yaml
+      #    CLUSTER_NUMBER=${{ matrix.clusters }}
+      #    for i in $(seq 0 $((CLUSTER_NUMBER - 1)))
+      #    do
+      #      echo "Cluster: eksCluster-$i"
+      #      cilium status --context=eksCluster-$i --wait
+      #      cilium clustermesh status --context=eksCluster-$i --wait
+      #    done
+      #      echo "Cluster Connectivity test eksCluster-0 and eksCluster-1"
+      #    cilium connectivity test --context eksCluster-0 --multi-cluster eksCluster-1
 
       - name: Remove cilium Pulumi resource
         if: steps.set_output.outputs.status == 'proceed'
