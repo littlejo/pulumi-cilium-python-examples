@@ -405,14 +405,14 @@ class EKS:
        )
 
    def add_dns_addon(self):
-       aws_native.eks.Addon(f"eks-addon-dns-{self.name}",
+       aws_tf.eks.Addon(f"eks-addon-dns-{self.name}",
            addon_name="coredns",
            cluster_name=self.name,
            opts=pulumi.ResourceOptions(parent=self.cluster),
        )
 
    def add_kubeproxy_addon(self):
-       aws_native.eks.Addon(f"eks-addon-kubeproxy-{self.name}",
+       aws_tf.eks.Addon(f"eks-addon-kubeproxy-{self.name}",
            addon_name="kube-proxy",
            cluster_name=self.name,
            opts=pulumi.ResourceOptions(parent=self.cluster),
