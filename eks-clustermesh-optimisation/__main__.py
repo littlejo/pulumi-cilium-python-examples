@@ -59,7 +59,7 @@ class VPC:
        return self.vpc.id
 
    def get_subnet_ids(self):
-       return [self.private_subnet1.subnet_id, self.private_subnet2.subnet_id]
+       return [self.private_subnet1.id, self.private_subnet2.id]
 
    def create_subnets(self):
        tags = {
