@@ -46,67 +46,67 @@ class VPC:
        tags = {
          "Name": self.name
        }
-       self.vpc = aws_native.ec2.Vpc(
+       self.vpc = aws_tf.ec2.Vpc(
            f"vpc-{self.name}",
            cidr_block=self.cidr,
            enable_dns_hostnames=True,
            enable_dns_support=True,
            opts=pulumi.ResourceOptions(parent=self.parent),
-           tags=tags_format(tags)
+           tags=tags
        )
 
    def get_vpc_id(self):
-       return self.vpc.vpc_id
+       return self.vpc.id
 
    def get_subnet_ids(self):
-       return [self.private_subnet1.subnet_id, self.private_subnet2.subnet_id]
+       return [self.private_subnet1.id, self.private_subnet2.id]
 
    def create_subnets(self):
        tags = {
          "Name": f"subnet-public-{self.name}-1"
        }
-       self.subnet1 = aws_native.ec2.Subnet(
+       self.subnet1 = aws_tf.ec2.Subnet(
            f"vpc-subnet-public-{self.name}-1",
            vpc_id=self.vpc.id,
            cidr_block=self.subnet_cidr[0].with_prefixlen,
            availability_zone=self.azs[0],
            opts=pulumi.ResourceOptions(parent=self.vpc),
            map_public_ip_on_launch=True,
-           tags=tags_format(tags),
+           tags=tags,
        )
        tags = {
          "Name": f"subnet-public-{self.name}-2"
        }
-       self.subnet2 = aws_native.ec2.Subnet(
+       self.subnet2 = aws_tf.ec2.Subnet(
            f"vpc-subnet-public-{self.name}-2",
            vpc_id=self.vpc.id,
            cidr_block=self.subnet_cidr[1].with_prefixlen,
            availability_zone=self.azs[1],
            opts=pulumi.ResourceOptions(parent=self.vpc),
            map_public_ip_on_launch=True,
-           tags=tags_format(tags),
+           tags=tags,
        )
        tags = {
          "Name": f"subnet-private-{self.name}-1"
        }
-       self.private_subnet1 = aws_native.ec2.Subnet(
+       self.private_subnet1 = aws_tf.ec2.Subnet(
            f"vpc-private-subnet-{self.name}-1",
            vpc_id=self.vpc.id,
            cidr_block=self.subnet_cidr[2].with_prefixlen,
            availability_zone=self.azs[0],
            opts=pulumi.ResourceOptions(parent=self.vpc),
-           tags=tags_format(tags),
+           tags=tags,
        )
        tags = {
          "Name": f"subnet-private-{self.name}-2"
        }
-       self.private_subnet2 = aws_native.ec2.Subnet(
+       self.private_subnet2 = aws_tf.ec2.Subnet(
            f"vpc-private-subnet-{self.name}-2",
            vpc_id=self.vpc.id,
            cidr_block=self.subnet_cidr[3].with_prefixlen,
            availability_zone=self.azs[1],
            opts=pulumi.ResourceOptions(parent=self.vpc),
-           tags=tags_format(tags),
+           tags=tags,
        )
    def create_nat_gateway(self):
        tags = {
@@ -124,13 +124,9 @@ class VPC:
        )
 
    def create_internet_gateway(self):
-       self.igw = aws_native.ec2.InternetGateway(f"vpc-igw-{self.name}",
+       self.igw = aws_tf.ec2.InternetGateway(f"vpc-igw-{self.name}",
+                                                vpc_id=self.vpc.id,
                                                 opts=pulumi.ResourceOptions(parent=self.parent))
-       aws_native.ec2.VpcGatewayAttachment(f"vpc-igw-attachment-{self.name}",
-                                 vpc_id=self.vpc.id,
-                                 internet_gateway_id=self.igw.id,
-                                 opts=pulumi.ResourceOptions(parent=self.igw),
-                         )
 
    def create_route_table(self):
        tags = {
@@ -397,7 +393,7 @@ class EKS:
        return self.cluster.name
 
    def add_node_access(self):
-       aws_native.eks.AccessEntry(f"eks-access-entry-ec2-{self.name}",
+       aws_tf.eks.AccessEntry(f"eks-access-entry-ec2-{self.name}",
            cluster_name=self.name,
            principal_arn=self.ec2["role_arn"],
            type="EC2_LINUX",
@@ -405,14 +401,14 @@ class EKS:
        )
 
    def add_dns_addon(self):
-       aws_native.eks.Addon(f"eks-addon-dns-{self.name}",
+       aws_tf.eks.Addon(f"eks-addon-dns-{self.name}",
            addon_name="coredns",
            cluster_name=self.name,
            opts=pulumi.ResourceOptions(parent=self.cluster),
        )
 
    def add_kubeproxy_addon(self):
-       aws_native.eks.Addon(f"eks-addon-kubeproxy-{self.name}",
+       aws_tf.eks.Addon(f"eks-addon-kubeproxy-{self.name}",
            addon_name="kube-proxy",
            cluster_name=self.name,
            opts=pulumi.ResourceOptions(parent=self.cluster),
@@ -502,7 +498,7 @@ except:
 try:
     parallel = int(config.require("parallel"))
 except:
-    parallel = 4
+    parallel = 3
 
 cluster_ids = list(range(cluster_number))
 
