@@ -1,5 +1,5 @@
 pulumi>=3
 pulumi_aws_native>=0.90.0
-pulumi_aws==6.48.0
+pulumi_aws==6.56.1
 littlejo_cilium==0.1.7
 pulumi-command
