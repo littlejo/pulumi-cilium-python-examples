@@ -44,7 +44,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Geolocalisation
         run: |
-          geoloc="skip"
+          geoloc="proceed"
           curl ipinfo.io/$(curl checkip.amazonaws.com 2> /dev/null) 2> /dev/null | tee /tmp/geo
           if cat /tmp/geo | grep region | grep -q Virginia
           then
