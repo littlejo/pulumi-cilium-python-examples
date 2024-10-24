@@ -397,7 +397,7 @@ class EKS:
        return self.cluster.name
 
    def add_node_access(self):
-       aws_native.eks.AccessEntry(f"eks-access-entry-ec2-{self.name}",
+       aws_tf.eks.AccessEntry(f"eks-access-entry-ec2-{self.name}",
            cluster_name=self.name,
            principal_arn=self.ec2["role_arn"],
            type="EC2_LINUX",
