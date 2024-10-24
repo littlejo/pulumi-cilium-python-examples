@@ -18,3 +18,7 @@ apply:
 check:
 	export KUBECONFIG=$(DIR)/kubeconfig.yaml
 	check-cilium.sh
+
+destroy:
+	bash ./remove-state.sh
+	pulumi down -p $(PULUMI_PARALLEL)
