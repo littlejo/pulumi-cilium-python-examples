@@ -237,7 +237,7 @@ class IAMRole:
       self.create_role()
 
    def create_role(self):
-      self.role = aws_native.iam.Role(
+      self.role = aws_tf.iam.Role(
           f"iam-role-{self.name}",
           name=self.name,
           assume_role_policy=pulumi.Output.from_input(
