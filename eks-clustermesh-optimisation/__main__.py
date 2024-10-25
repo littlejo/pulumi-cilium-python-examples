@@ -404,7 +404,7 @@ class EKS:
        aws_tf.eks.Addon(f"eks-addon-dns-{self.name}",
            addon_name="coredns",
            cluster_name=self.name,
-           opts=pulumi.ResourceOptions(parent=self.cluster),
+           opts=pulumi.ResourceOptions(parent=self.cilium.deploy),
        )
 
    def add_kubeproxy_addon(self):
@@ -471,11 +471,11 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
                           ec2_profile_name=ec2_profile_name,
                           parent=null_eks)
         eks_cluster.add_node_access()
-        eks_cluster.add_dns_addon()
         eks_cluster.add_kubeproxy_addon()
         eks_cluster.create_kubeconfig_sa()
         eks_cluster.create_ec2()
         eks_cluster.add_cilium(config_path=eks_cluster.get_kubeconfig(), parent=eks_cluster.get_kubeconfig_sa(), sets=cilium_sets, cmesh_service="NodePort", depends_on=[eks_cluster.get_ec2()])
+        eks_cluster.add_dns_addon()
         cmesh_list += eks_cluster.get_cilium_cmesh()
         kubeconfigs += [ eks_cluster.get_kubeconfig() ]
 
