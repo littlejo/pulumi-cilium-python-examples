@@ -239,8 +239,8 @@ class IAMRole:
    def create_role(self):
       self.role = aws_native.iam.Role(
           f"iam-role-{self.name}",
-          role_name=self.name,
-          assume_role_policy_document=pulumi.Output.from_input(
+          name=self.name,
+          assume_role_policy=pulumi.Output.from_input(
               self.get_assume_role_policy_document()
           ),
           managed_policy_arns=self.managed_policy_arns,
@@ -248,9 +248,9 @@ class IAMRole:
       )
 
    def create_profile(self):
-      self.profile = aws_native.iam.InstanceProfile(f"iam-profile-{self.name}",
+      self.profile = aws_tf.iam.InstanceProfile(f"iam-profile-{self.name}",
           path="/",
-          roles=[self.role.role_name],
+          role=self.role.role_name,
           opts=pulumi.ResourceOptions(parent=self.role),
       )
 
@@ -270,7 +270,7 @@ class IAMRole:
        return self.role.arn
 
    def get_profile_name(self):
-       return self.profile.instance_profile_name
+       return self.profile.name
 
 class Cilium:
    def __init__(self, k8s_name, config_path=None, parent=None, depends_on=[], context=None):
