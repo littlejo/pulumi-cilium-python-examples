@@ -250,7 +250,7 @@ class IAMRole:
    def create_profile(self):
       self.profile = aws_tf.iam.InstanceProfile(f"iam-profile-{self.name}",
           path="/",
-          role=self.role.role_name,
+          role=self.role.name,
           opts=pulumi.ResourceOptions(parent=self.role),
       )
 
