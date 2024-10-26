@@ -458,6 +458,7 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
                              f"operator.replicas=1",
                              f'ipam.mode=cluster-pool',
                              f'routingMode=tunnel',
+                             f'clustermesh.maxConnectedClusters=511',
                              'ipam.operator.clusterPoolIPv4PodCIDRList={10.%s.0.0/16}' % i,
         ]
         eks_cluster = EKS(f"eksCluster-{i}",
