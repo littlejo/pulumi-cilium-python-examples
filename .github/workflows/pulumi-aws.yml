@@ -101,6 +101,7 @@ jobs:
           for i in $(seq 0 $((CLUSTER_NUMBER - 1)))
           do
             echo "Cluster: eksCluster-$i"
+            cilium config view --context=eksCluster-$i | grep max-connected-clusters
             cilium status --context=eksCluster-$i --wait
             cilium clustermesh status --context=eksCluster-$i --wait
           done
