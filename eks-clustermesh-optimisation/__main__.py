@@ -319,7 +319,7 @@ class EKS:
        sleep = local.Command(f"cmd-sleep-{self.name}",
                create="sleep $WAIT",
                environment={"WAIT": str(self.id)},
-               opts=pulumi.ResourceOptions(depends_on=self.parent),
+               opts=pulumi.ResourceOptions(parent=self.parent),
            )
        self.cluster = aws_tf.eks.Cluster(
            f"eks-cp-{self.name}",
