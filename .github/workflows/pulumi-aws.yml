@@ -82,7 +82,10 @@ jobs:
 
       - name: Create stack
         if: steps.set_output.outputs.status == 'proceed'
-        run: pulumi login --local && pulumi stack init dev && pulumi config set --stack dev clusterNumber ${{ matrix.clusters }}
+        run: |
+          pulumi login --local && pulumi stack init dev
+          pulumi config set --stack dev clusterNumber ${{ matrix.clusters }}
+          pulumi config set --stack dev instanceType t4g.medium
 
       - name: Deployment of infrastructure
         if: steps.set_output.outputs.status == 'proceed'
