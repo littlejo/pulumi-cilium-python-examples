@@ -318,7 +318,7 @@ class EKS:
    def create_eks(self):
        sleep = local.Command("cmd-sleep-{self.name}",
                create="sleep $WAIT",
-               environment={"WAIT": self.id},
+               environment={"WAIT": str(self.id)},
                opts=pulumi.ResourceOptions(depends_on=self.parent),
            )
        self.cluster = aws_tf.eks.Cluster(
