@@ -316,6 +316,11 @@ class EKS:
        }
 
    def create_eks(self):
+       sleep = local.Command("cmd-sleep-{self.name}",
+               create="sleep $WAIT",
+               environment={"WAIT": self.id},
+               opts=pulumi.ResourceOptions(depends_on=self.parent),
+           )
        self.cluster = aws_tf.eks.Cluster(
            f"eks-cp-{self.name}",
            name=self.name,
@@ -333,7 +338,7 @@ class EKS:
                            "bootstrap_cluster_creator_admin_permissions": True, #TOFIX
                          },
            version=self.version,
-           opts=pulumi.ResourceOptions(parent=self.parent),
+           opts=pulumi.ResourceOptions(parent=sleep),
        )
 
    def create_ec2(self):
