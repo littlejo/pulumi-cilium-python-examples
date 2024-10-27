@@ -28,13 +28,13 @@ jobs:
         dir:
           - ./eks-clustermesh-optimisation
         clusters:
+          - 9
           - 3
           - 4
           - 5
           - 6
           - 7
           - 8
-          - 9
     name: Cluster Mesh EKS
     runs-on: ubuntu-latest
     defaults:
