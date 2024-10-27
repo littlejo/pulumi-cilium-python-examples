@@ -316,7 +316,7 @@ class EKS:
        }
 
    def create_eks(self):
-       sleep = local.Command("cmd-sleep-{self.name}",
+       sleep = local.Command(f"cmd-sleep-{self.name}",
                create="sleep $WAIT",
                environment={"WAIT": str(self.id)},
                opts=pulumi.ResourceOptions(depends_on=self.parent),
