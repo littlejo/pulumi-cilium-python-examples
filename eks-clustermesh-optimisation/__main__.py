@@ -316,8 +316,8 @@ class EKS:
        }
 
    def create_eks(self):
-       batch_number = self.id + 24 // 32
-       delay = batch_number * 3
+       batch_number = self.id // 32
+       delay = 19 + batch_number * 3
        sleep = local.Command(f"cmd-sleep-{self.name}",
                create=f"sleep {delay}",
                opts=pulumi.ResourceOptions(parent=self.parent),
