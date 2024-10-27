@@ -501,6 +501,11 @@ try:
 except:
     parallel = 3
 
+try:
+    instance_type = config.require("instanceType")
+except:
+    instance_type = "t4g.large"
+
 cluster_ids = list(range(cluster_number))
 
 region = aws_tf.config.region
@@ -511,11 +516,9 @@ arch = "arm"
 
 if arch == "arm":
     ami_name_regex = f"^amazon-eks-node-al2023-arm64-standard-{kubernetes_version}-v20.*"
-    instance_type = "t4g.medium"
     interfaces = "ens+"
 else:
     ami_name_regex = f"^amazon-eks-node-{kubernetes_version}-v202.*"
-    instance_type = "t3.micro"
     interfaces = "eth0"
 
 ami = aws_tf.ec2.get_ami(
