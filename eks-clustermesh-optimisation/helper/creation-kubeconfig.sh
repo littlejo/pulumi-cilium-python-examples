@@ -14,7 +14,15 @@ export KUBECONFIG=$(mktemp)
 
 ca_crt="$(mktemp)"; echo "$ca" | base64 -d > $ca_crt
 
-export token=$(aws eks get-token --cluster-name $cluster | jq -r .status.token)
+for i in {1..10}; do
+    export token=$(aws eks get-token --cluster-name $cluster | jq -r .status.token)
+    if [[ -n "$token" ]]; then
+        break
+    else
+        sleep 10
+    fi
+done
+
 create_kubeconfig
 
 kubectl create sa $serviceaccount -n $namespace
@@ -31,6 +39,7 @@ metadata:
 type: kubernetes.io/service-account-token
 EOF
 
+sleep 1
 export token=$(kubectl get secret $serviceaccount -n $namespace -o "jsonpath={.data.token}" | base64 -d)
 export account=$serviceaccount
 
