@@ -1,6 +1,9 @@
 import pulumi
 import littlejo_cilium as cilium
 from pulumi_command import local
+import generate_ca
+
+ca_crt, ca_key = generate_ca.generate_certificate_and_key()
 
 def cilium_clustermesh(i, kind):
     cmesh_provider = cilium.Provider(f"cmesh{i}", context=f"kind-cmesh{i}", opts=pulumi.ResourceOptions(parent=kind[i]))
@@ -8,6 +11,8 @@ def cilium_clustermesh(i, kind):
         sets=[
             f"cluster.name=cmesh{i}",
             f"cluster.id={i+1}",
+            f"tls.ca.cert={ca_crt}",
+            f"tls.ca.key={ca_key}",
             "ipam.mode=kubernetes",
         ],
         version="1.15.5",

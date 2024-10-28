@@ -4,6 +4,7 @@ import pulumi_aws as aws_tf
 from pulumi_command import local
 import littlejo_cilium as cilium
 import ipaddress
+import generate_ca
 
 
 def get_userdata(eks_name, api_server_url, ca, cidr):
@@ -460,6 +461,8 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
                              f'routingMode=tunnel',
                              f'clustermesh.maxConnectedClusters=511',
                              'ipam.operator.clusterPoolIPv4PodCIDRList={10.%s.0.0/16}' % i,
+                             f"tls.ca.cert={ca_crt}",
+                             f"tls.ca.key={ca_key}",
         ]
         eks_cluster = EKS(f"eksCluster-{i}",
                           id=i,
@@ -525,6 +528,7 @@ ami = aws_tf.ec2.get_ami(
     most_recent=True,
     name_regex=ami_name_regex
     )
+ca_crt, ca_key = generate_ca.generate_certificate_and_key()
 
 null_sec = local.Command(f"cmd-null-security")
 null_vpc = local.Command(f"cmd-null-vpc")
