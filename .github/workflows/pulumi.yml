@@ -23,6 +23,11 @@ jobs:
           - 7
           - 8
           - 9
+          - 10
+          - 11
+          - 12
+          - 13
+          - 14
     name: Cluster Mesh Kind
     runs-on: ubuntu-latest
     defaults:
@@ -60,6 +65,16 @@ jobs:
           command: up
           stack-name: dev
           cloud-url: file://~
+
+      - name: Check secrets sizes
+        run: |
+          CLUSTER_NUMBER=${{ matrix.clusters }}
+          for i in $(seq 0 $((CLUSTER_NUMBER - 1)))
+          do
+            kubectl get secret --context=kind-cmesh$i -n kube-system sh.helm.release.v1.cilium.v1 -o jsonpath="{.data.release}" | base64 --decode | wc -c
+            kubectl get secret --context=kind-cmesh$i -n kube-system sh.helm.release.v1.cilium.v2 -o jsonpath="{.data.release}" | base64 --decode | wc -c
+            kubectl get secret --context=kind-cmesh$i -n kube-system sh.helm.release.v1.cilium.v3 -o jsonpath="{.data.release}" | base64 --decode | wc -c
+          done
 
       - name: Check Cluster Mesh
         run: |
