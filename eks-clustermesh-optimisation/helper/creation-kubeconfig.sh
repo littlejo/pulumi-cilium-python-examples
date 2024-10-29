@@ -36,3 +36,19 @@ export account=$serviceaccount
 
 export KUBECONFIG=$kubeconfig
 create_kubeconfig
+
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cilium-ca
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: cilium
+    meta.helm.sh/release-namespace: kube-system
+data:
+  ca.crt: "$crt_cilium"
+  ca.key: "$key_cilium"
+EOF

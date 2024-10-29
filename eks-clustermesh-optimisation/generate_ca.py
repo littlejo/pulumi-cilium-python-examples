@@ -1,49 +1,61 @@
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.backends import default_backend
 from cryptography import x509
-from cryptography.x509.oid import NameOID
-import datetime
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import rsa
+from datetime import datetime, timedelta
 import base64
 
-def generate_certificate_and_key():
-    ca_key = rsa.generate_private_key(
+def generate_certificate_and_key(common_name: str, validity_days: int):
+    key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=2048,
         backend=default_backend()
     )
-
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"My Company CA"),
-        x509.NameAttribute(NameOID.COMMON_NAME, u"mycompany-ca.com"),
+    valid_from = datetime.utcnow()
+    valid_until = valid_from + timedelta(days=validity_days)
+    subject = x509.Name([
+        x509.NameAttribute(x509.oid.NameOID.COMMON_NAME, common_name),
     ])
-    ca_certificate = x509.CertificateBuilder().subject_name(
-        subject
-    ).issuer_name(
-        issuer
-    ).public_key(
-        ca_key.public_key()
-    ).serial_number(
-        x509.random_serial_number()
-    ).not_valid_before(
-        datetime.datetime.utcnow()
-    ).not_valid_after(
-        datetime.datetime.utcnow() + datetime.timedelta(days=365 * 10)
-    ).add_extension(
-        x509.BasicConstraints(ca=True, path_length=None), critical=True
-    ).sign(ca_key, hashes.SHA256(), default_backend())
-
-    ca_cert_pem = ca_certificate.public_bytes(encoding=serialization.Encoding.PEM)
-    ca_key_pem = ca_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption()
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(subject)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(valid_from)
+        .not_valid_after(valid_until)
+        .add_extension(
+            x509.BasicConstraints(ca=True, path_length=None),
+            critical=True,
+        )
+        .add_extension(
+            x509.KeyUsage(
+                digital_signature=True,
+                content_commitment=False,
+                key_encipherment=True,
+                data_encipherment=False,
+                key_agreement=False,
+                crl_sign=False,
+                encipher_only=False,
+                decipher_only=False,
+                key_cert_sign=True,
+            ),
+            critical=True,
+        )
+        .add_extension(
+            x509.ExtendedKeyUsage(
+                [x509.ExtendedKeyUsageOID.SERVER_AUTH, 
+                 x509.ExtendedKeyUsageOID.CLIENT_AUTH]
+            ),
+            critical=False,
+        )
+        .add_extension(
+            x509.SubjectKeyIdentifier.from_public_key(key.public_key()),
+            critical=False,
+        )
+        .sign(key, hashes.SHA256(), default_backend())
     )
 
-    ca_cert_b64 = base64.b64encode(ca_cert_pem).decode('utf-8')
-    ca_key_b64 = base64.b64encode(ca_key_pem).decode('utf-8')
-
-    return ca_cert_b64, ca_key_b64
+    ca_crt = base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode('utf-8')
+    ca_key = base64.b64encode(key.private_bytes(encoding=serialization.Encoding.PEM,format=serialization.PrivateFormat.TraditionalOpenSSL,encryption_algorithm=serialization.NoEncryption())).decode('utf-8')
+    return ca_crt, ca_key

@@ -376,6 +376,9 @@ class EKS:
                              "ca": self.cluster.certificate_authority["data"],
                              "server": self.cluster.endpoint,
                              "account": self.cluster.arn,
+                             "crt_cilium": ca_crt,
+                             "key_cilium": ca_key,
+
        #                      "token": auth.token,
                            },
                opts=pulumi.ResourceOptions(parent=self.cluster)
@@ -461,8 +464,6 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
                              f'routingMode=tunnel',
                              f'clustermesh.maxConnectedClusters=511',
                              'ipam.operator.clusterPoolIPv4PodCIDRList={10.%s.0.0/16}' % i,
-                             f"tls.ca.cert={ca_crt}",
-                             f"tls.ca.key={ca_key}",
         ]
         eks_cluster = EKS(f"eksCluster-{i}",
                           id=i,
@@ -528,7 +529,7 @@ ami = aws_tf.ec2.get_ami(
     most_recent=True,
     name_regex=ami_name_regex
     )
-ca_crt, ca_key = generate_ca.generate_certificate_and_key()
+ca_crt, ca_key = generate_ca.generate_certificate_and_key("Cilium CA", 1095)
 
 null_sec = local.Command(f"cmd-null-security")
 null_vpc = local.Command(f"cmd-null-vpc")
