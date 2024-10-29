@@ -282,7 +282,7 @@ class Cilium:
        self.deploy = cilium.Install(f"cilium-install-{self.k8s_name}",
          sets=sets,
          version=version,
-         opts=pulumi.ResourceOptions(parent=self.provider, providers=[self.provider]),
+         opts=pulumi.ResourceOptions(providers=[self.provider]),
       )
 
    def cmesh_enable(self, service_type):
@@ -451,7 +451,10 @@ def create_sg(null_sec):
 def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids, ec2_profile_name):
     cmesh_list = []
     kubeconfigs = []
+    null_eks_decal = local.Command(f"cmd-null-eks-son", opts=pulumi.ResourceOptions(parent=null_eks))
     for i in cluster_ids:
+        if i > 127:
+            null_eks = null_eks_decal
         cilium_sets = [
                              f"cluster.name=cmesh{i+1}",
                              f"cluster.id={i+1}",
