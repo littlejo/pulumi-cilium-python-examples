@@ -26,7 +26,7 @@ jobs:
       fail-fast: false
       matrix:
         dir:
-          - ./eks-clustermesh-optimisation
+          - ./eks-clustermesh-multi
         clusters:
           - 3
           - 4
