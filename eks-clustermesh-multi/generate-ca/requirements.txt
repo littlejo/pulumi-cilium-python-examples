@@ -1,0 +1,2 @@
+pulumi>=3
+cryptography==43.0.3

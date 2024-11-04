@@ -1,0 +1,156 @@
+name: Pulumi-AWS-EKS
+on:
+  workflow_dispatch:
+    inputs:
+      aws_access_id:
+        description: 'AWS Access Key Id'
+        required: true
+      aws_secret_id:
+        description: 'Secret Access Key'
+        required: true
+      aws_region_id:
+        description: 'AWS DEFAULT Region'
+        required: true
+        default: 'us-east-1'
+
+env:
+  PULUMI_CONFIG_PASSPHRASE: ""
+  AWS_ACCESS_KEY_ID: ${{ github.event.inputs.aws_access_id }}
+  AWS_SECRET_ACCESS_KEY: ${{ github.event.inputs.aws_secret_id }}
+
+jobs:
+  kind-clustermesh:
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        dir:
+          - ./eks-clustermesh-multi
+        clusters:
+          - 2
+          - 3
+          - 4
+    name: Cluster Mesh EKS
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Geolocalisation
+        run: |
+          geoloc="proceed"
+          curl ipinfo.io/$(curl checkip.amazonaws.com 2> /dev/null) 2> /dev/null | tee /tmp/geo
+          if cat /tmp/geo | grep region | grep -q Virginia
+          then
+             geoloc="proceed"
+          fi
+          echo "GEOLOCATION_STATUS=$geoloc" >> $GITHUB_ENV
+      - name: Set Output Based on Geolocation
+        id: set_output
+        run: echo "status=${{ env.GEOLOCATION_STATUS }}" >> $GITHUB_OUTPUT
+      - uses: cilium/cilium-cli@404d52692f62eebb7211fdacd114848995ada1b7
+        if: steps.set_output.outputs.status == 'proceed'
+        with:
+          skip-build: true
+          release-version: v0.16.14
+      - name: Setup Python ✨
+        if: steps.set_output.outputs.status == 'proceed'
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Clean disk
+        if: steps.set_output.outputs.status == 'proceed'
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      - name: Installing dependencies 📦️
+        if: steps.set_output.outputs.status == 'proceed'
+        run: pip install -r requirements.txt
+
+      - uses: pulumi/actions@v5
+        if: steps.set_output.outputs.status == 'proceed'
+
+      - name: Create stack
+        if: steps.set_output.outputs.status == 'proceed'
+        run: |
+          pulumi login --local && pulumi stack init us-west-2
+          pulumi config set --stack us-west-2 clusterNumber ${{ matrix.clusters }}
+          pulumi config set --stack us-west-2 instanceType t4g.medium
+          pulumi config set --stack us-west-2 aws:region us-west-2
+          pulumi config set --stack us-west-2 poolId 0
+
+      - name: Deployment of infrastructure
+        if: steps.set_output.outputs.status == 'proceed'
+        uses: pulumi/actions@v5
+        with:
+          work-dir: ${{ matrix.dir }}
+          command: up
+          stack-name: us-west-2
+          cloud-url: file://~
+
+      - name: Kubeconfig
+        if: steps.set_output.outputs.status == 'proceed'
+        run: |
+          pulumi stack output --stack us-west-2 kubeconfig
+
+      - name: Create stack
+        if: steps.set_output.outputs.status == 'proceed'
+        run: |
+          pulumi login --local && pulumi stack init us-east-1
+          pulumi config set --stack us-east-1 clusterNumber ${{ matrix.clusters }}
+          pulumi config set --stack us-east-1 instanceType t4g.medium
+          pulumi config set --stack us-east-1 aws:region us-east-1
+          pulumi config set --stack us-east-1 poolId 1
+
+      - name: Deployment of infrastructure
+        if: steps.set_output.outputs.status == 'proceed'
+        uses: pulumi/actions@v5
+        with:
+          work-dir: ${{ matrix.dir }}
+          command: up
+          stack-name: us-east-1
+          cloud-url: file://~
+
+      - name: Kubeconfig
+        if: steps.set_output.outputs.status == 'proceed'
+        run: |
+          pulumi stack output --stack us-east-1 kubeconfig
+
+      - name: Check Cluster Mesh
+        if: steps.set_output.outputs.status == 'proceed'
+        run: |
+          pulumi stack output kubeconfig
+          export KUBECONFIG=./kubeconfig.yaml
+          CLUSTER_NUMBER=${{ matrix.clusters }}
+          for i in $(seq 0 $((CLUSTER_NUMBER - 1)))
+          do
+            echo "Cluster: eksCluster-$i"
+            cilium config view --context=eksCluster-$i | grep max-connected-clusters
+            cilium status --context=eksCluster-$i --wait
+            cilium clustermesh status --context=eksCluster-$i --wait
+          done
+            echo "Cluster Connectivity test eksCluster-0 and eksCluster-1"
+          cilium connectivity test --context eksCluster-0 --multi-cluster eksCluster-1
+
+      - name: Remove cilium Pulumi resource
+        if: steps.set_output.outputs.status == 'proceed'
+        run: |
+          while pulumi stack --stack dev --show-urns | grep cilium | grep URN > /tmp/urn
+          do
+            state=$(head -1 /tmp/urn | awk '{print $NF}')
+            echo "pulumi state delete --stack dev --target-dependents '$state'" | bash
+          done
+
+      - name: Destroy of infrastructure
+        uses: pulumi/actions@v5
+        if: steps.set_output.outputs.status == 'proceed'
+        with:
+          work-dir: ${{ matrix.dir }}
+          command: destroy
+          stack-name: dev
+          cloud-url: file://~
