@@ -483,7 +483,7 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
         eks_cluster.add_kubeproxy_addon()
         eks_cluster.create_kubeconfig_sa()
         eks_cluster.create_ec2()
-        eks_cluster.add_cilium(config_path=eks_cluster.get_kubeconfig(), parent=eks_cluster.get_kubeconfig_sa(), sets=cilium_sets, cmesh_service="NodePort", depends_on=[eks_cluster.get_ec2()])
+        eks_cluster.add_cilium(config_path=eks_cluster.get_kubeconfig(), version="1.16.3", parent=eks_cluster.get_kubeconfig_sa(), sets=cilium_sets, cmesh_service="NodePort", depends_on=[eks_cluster.get_ec2()])
         eks_cluster.add_dns_addon()
         cmesh_list += eks_cluster.get_cilium_cmesh()
         kubeconfigs += [ eks_cluster.get_kubeconfig() ]
@@ -514,14 +514,14 @@ try:
 except:
     instance_type = "t4g.large"
 
-pool_id = 0
+pool_id = 1
 cluster_ids = list(range(pool_id*cluster_number, cluster_number + pool_id*cluster_number))
 vpc_cidr = f"172.31.{pool_id}.0/24"
 
 region = aws_tf.config.region
 azs = [f"{region}a", f"{region}b"]
 
-kubernetes_version = "1.30"
+kubernetes_version = "1.31"
 arch = "arm"
 
 if arch == "arm":
@@ -554,5 +554,5 @@ cmesh_list, kubeconfig_global = create_eks(null_eks,
                                            pool_id,
                                           )
 
-cilium_connect = Cilium(f"cmesh", config_path=f"./kubeconfig.yaml", context=f"eksCluster-0", depends_on=kubeconfig_global)
-cilium_connect.cmesh_connection(f"cmesh-connect", parallel=parallel, destination_contexts=[f"eksCluster-{i}" for i in cluster_ids if i !=0], depends_on=kubeconfig_global)
+cilium_connect = Cilium(f"cmesh", config_path=f"./kubeconfig.yaml", context=f"eksCluster-{pool_id*cluster_number}", depends_on=kubeconfig_global)
+cilium_connect.cmesh_connection(f"cmesh-connect", parallel=parallel, destination_contexts=[f"eksCluster-{i}" for i in cluster_ids if i !=pool_id*cluster_number], depends_on=kubeconfig_global)
