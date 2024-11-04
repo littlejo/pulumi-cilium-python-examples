@@ -99,6 +99,7 @@ jobs:
       - name: Check Cluster Mesh
         if: steps.set_output.outputs.status == 'proceed'
         run: |
+          pulumi stack output kubeconfig
           export KUBECONFIG=./kubeconfig.yaml
           CLUSTER_NUMBER=${{ matrix.clusters }}
           for i in $(seq 0 $((CLUSTER_NUMBER - 1)))

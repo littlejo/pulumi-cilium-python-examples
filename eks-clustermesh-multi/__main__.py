@@ -489,7 +489,7 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
         kubeconfigs += [ eks_cluster.get_kubeconfig() ]
 
     kubeconfig_global = local.Command("cmd-kubeconfig-connect",
-            create="kubectl config view --raw > ./kubeconfig.yaml",
+            create="kubectl config view --raw | tee ./kubeconfig.yaml",
             delete=f"rm -f kubeconfig.yaml",
             environment={"KUBECONFIG": ":".join(kubeconfigs)},
             opts=pulumi.ResourceOptions(depends_on=cmesh_list),
@@ -514,7 +514,7 @@ try:
 except:
     instance_type = "t4g.large"
 
-pool_id = 1
+pool_id = 0
 cluster_ids = list(range(pool_id*cluster_number, cluster_number + pool_id*cluster_number))
 vpc_cidr = f"172.31.{pool_id}.0/24"
 
@@ -553,6 +553,8 @@ cmesh_list, kubeconfig_global = create_eks(null_eks,
                                            ec2_role.get_profile_name(),
                                            pool_id,
                                           )
+
+pulumi.export("kubeconfig", kubeconfig_global.stdout)
 
 cilium_connect = Cilium(f"cmesh", config_path=f"./kubeconfig.yaml", context=f"eksCluster-{pool_id*cluster_number}", depends_on=kubeconfig_global)
 cilium_connect.cmesh_connection(f"cmesh-connect", parallel=parallel, destination_contexts=[f"eksCluster-{i}" for i in cluster_ids if i !=pool_id*cluster_number], depends_on=kubeconfig_global)
