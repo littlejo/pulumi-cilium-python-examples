@@ -455,7 +455,7 @@ def create_sg(null_sec):
                                                              ])
     return eks_sg, ec2_sg
 
-def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids, ec2_profile_name):
+def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids, ec2_profile_name, pool_id):
     cmesh_list = []
     kubeconfigs = []
     for i in cluster_ids:
@@ -467,7 +467,7 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
                              f'ipam.mode=cluster-pool',
                              f'routingMode=tunnel',
                              f'clustermesh.maxConnectedClusters=511',
-                             'ipam.operator.clusterPoolIPv4PodCIDRList={10.%s.0.0/16}' % i,
+                             'ipam.operator.clusterPoolIPv4PodCIDRList={10.%s.%s.0/24}' % (pool_id, i),
         ]
         eks_cluster = EKS(f"eksCluster-{i}",
                           id=i,
@@ -514,7 +514,9 @@ try:
 except:
     instance_type = "t4g.large"
 
-cluster_ids = list(range(cluster_number))
+pool_id = 0
+cluster_ids = list(range(pool_id*cluster_number, cluster_number + pool_id*cluster_number))
+vpc_cidr = f"172.31.{pool_id}.0/24"
 
 region = aws_tf.config.region
 azs = [f"{region}a", f"{region}b"]
@@ -539,7 +541,7 @@ null_sec = local.Command(f"cmd-null-security")
 null_vpc = local.Command(f"cmd-null-vpc")
 null_eks = local.Command(f"cmd-null-eks")
 
-vpc = create_vpc(null_vpc, cidr="172.31.0.0/16")
+vpc = create_vpc(null_vpc, cidr=vpc_cidr)
 eks_role, ec2_role = create_roles(null_sec)
 eks_sg, ec2_sg = create_sg(null_sec)
 cmesh_list, kubeconfig_global = create_eks(null_eks,
@@ -549,6 +551,7 @@ cmesh_list, kubeconfig_global = create_eks(null_eks,
                                            ec2_role.get_arn(),
                                            [ec2_sg.get_id()],
                                            ec2_role.get_profile_name(),
+                                           pool_id,
                                           )
 
 cilium_connect = Cilium(f"cmesh", config_path=f"./kubeconfig.yaml", context=f"eksCluster-0", depends_on=kubeconfig_global)
