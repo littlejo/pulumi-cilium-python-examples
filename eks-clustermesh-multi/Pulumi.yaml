@@ -1,0 +1,6 @@
+name: eks-cilium-cmesh
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: deploy eks with aws provider in cilium cluster mesh

@@ -1,0 +1,4 @@
+encryptionsalt: v1:BvPH81kkv5k=:v1:8h+2Im6Lj21Q8tqt:DT0MxVtpkdSCXQ/EudET2e4vFmulTw==
+config:
+  eks-cilium-cmesh-connect:clusterNumber: "6"
+  eks-cilium-cmesh-connect:vpcNumber: "3"
