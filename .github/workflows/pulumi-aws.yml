@@ -28,13 +28,9 @@ jobs:
         dir:
           - ./eks-clustermesh-multi
         clusters:
+          - 2
           - 3
           - 4
-          - 5
-          - 6
-          - 7
-          - 8
-          - 9
     name: Cluster Mesh EKS
     runs-on: ubuntu-latest
     defaults:
@@ -83,9 +79,10 @@ jobs:
       - name: Create stack
         if: steps.set_output.outputs.status == 'proceed'
         run: |
-          pulumi login --local && pulumi stack init dev
-          pulumi config set --stack dev clusterNumber ${{ matrix.clusters }}
-          pulumi config set --stack dev instanceType t4g.medium
+          pulumi login --local && pulumi stack init us-west-2
+          pulumi config set --stack us-west-2 clusterNumber ${{ matrix.clusters }}
+          pulumi config set --stack us-west-2 instanceType t4g.medium
+          pulumi config set --stack us-west-2 region us-west-2
 
       - name: Deployment of infrastructure
         if: steps.set_output.outputs.status == 'proceed'
@@ -93,8 +90,35 @@ jobs:
         with:
           work-dir: ${{ matrix.dir }}
           command: up
-          stack-name: dev
+          stack-name: us-west-2
           cloud-url: file://~
+
+      - name: Kubeconfig
+        if: steps.set_output.outputs.status == 'proceed'
+        run: |
+          pulumi stack output --stack us-west-2 kubeconfig
+
+      - name: Create stack
+        if: steps.set_output.outputs.status == 'proceed'
+        run: |
+          pulumi login --local && pulumi stack init us-east-1
+          pulumi config set --stack us-east-1 clusterNumber ${{ matrix.clusters }}
+          pulumi config set --stack us-east-1 instanceType t4g.medium
+          pulumi config set --stack us-east-1 region us-east-1
+
+      - name: Deployment of infrastructure
+        if: steps.set_output.outputs.status == 'proceed'
+        uses: pulumi/actions@v5
+        with:
+          work-dir: ${{ matrix.dir }}
+          command: up
+          stack-name: us-east-1
+          cloud-url: file://~
+
+      - name: Kubeconfig
+        if: steps.set_output.outputs.status == 'proceed'
+        run: |
+          pulumi stack output --stack us-east-1 kubeconfig
 
       - name: Check Cluster Mesh
         if: steps.set_output.outputs.status == 'proceed'

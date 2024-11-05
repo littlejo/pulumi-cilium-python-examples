@@ -517,15 +517,13 @@ instance_type = get_config_value("instanceType", "t4g.large")
 pool_id = get_config_value("poolId", 0, int)
 region = get_config_value("region", aws_tf.config.region)
 os.environ["AWS_DEFAULT_REGION"] = region
+cluster_id_first = get_config_value("clusterIdFirstElement", pool_id*cluster_number, int) #To Manage pools of with different number of clusters
 
-cluster_ids = list(range(pool_id*cluster_number, cluster_number + pool_id*cluster_number))
+cluster_ids = list(range(cluster_id_first, cluster_number + cluster_id_first))
 vpc_cidr = f"172.31.{pool_id}.0/24"
 
-
-#azs = [f"{region}a", f"{region}b"]
 azs_info = aws_tf.get_availability_zones(state="available")
 azs = azs_info.names[:2]
-
 
 kubernetes_version = "1.31"
 arch = "arm"
