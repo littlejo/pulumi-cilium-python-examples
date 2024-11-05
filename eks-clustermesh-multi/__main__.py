@@ -497,28 +497,30 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
 
     return cmesh_list, kubeconfig_global
 
+def get_config_value(key, default=None, value_type=str):
+    try:
+        value = config.require(key)
+        return value_type(value)
+    except pulumi.ConfigMissingError:
+        return default
+    except ValueError:
+        print(f"Warning: Could not convert config '{key}' to {value_type.__name__}, using default.")
+        return default
+
 #Main
 config = pulumi.Config()
-try:
-    cluster_number = int(config.require("clusterNumber"))
-except:
-    cluster_number = 4
 
-try:
-    parallel = int(config.require("parallel"))
-except:
-    parallel = 3
+cluster_number = get_config_value("clusterNumber", 4, int)
+parallel = get_config_value("parallel", 3, int)
+instance_type = get_config_value("instanceType", "t4g.large")
+pool_id = get_config_value("poolId", 0, int)
+region = get_config_value("region", aws_tf.config.region)
+aws_tf.config.region = region
 
-try:
-    instance_type = config.require("instanceType")
-except:
-    instance_type = "t4g.large"
-
-pool_id = 0
 cluster_ids = list(range(pool_id*cluster_number, cluster_number + pool_id*cluster_number))
 vpc_cidr = f"172.31.{pool_id}.0/24"
 
-region = aws_tf.config.region
+
 azs = [f"{region}a", f"{region}b"]
 
 kubernetes_version = "1.31"
