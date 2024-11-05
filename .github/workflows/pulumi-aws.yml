@@ -83,6 +83,7 @@ jobs:
           pulumi config set --stack us-west-2 clusterNumber ${{ matrix.clusters }}
           pulumi config set --stack us-west-2 instanceType t4g.medium
           pulumi config set --stack us-west-2 region us-west-2
+          pulumi config set --stack us-west-2 poolId 0
 
       - name: Deployment of infrastructure
         if: steps.set_output.outputs.status == 'proceed'
@@ -105,6 +106,7 @@ jobs:
           pulumi config set --stack us-east-1 clusterNumber ${{ matrix.clusters }}
           pulumi config set --stack us-east-1 instanceType t4g.medium
           pulumi config set --stack us-east-1 region us-east-1
+          pulumi config set --stack us-west-2 poolId 1
 
       - name: Deployment of infrastructure
         if: steps.set_output.outputs.status == 'proceed'
