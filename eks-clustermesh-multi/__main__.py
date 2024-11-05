@@ -4,6 +4,7 @@ from pulumi_command import local
 import littlejo_cilium as cilium
 import ipaddress
 import generate_ca
+import os
 
 
 def get_userdata(eks_name, api_server_url, ca, cidr):
@@ -515,13 +516,16 @@ parallel = get_config_value("parallel", 3, int)
 instance_type = get_config_value("instanceType", "t4g.large")
 pool_id = get_config_value("poolId", 0, int)
 region = get_config_value("region", aws_tf.config.region)
-aws_tf.config.region = region
+os.environ["AWS_DEFAULT_REGION"] = region
 
 cluster_ids = list(range(pool_id*cluster_number, cluster_number + pool_id*cluster_number))
 vpc_cidr = f"172.31.{pool_id}.0/24"
 
 
-azs = [f"{region}a", f"{region}b"]
+#azs = [f"{region}a", f"{region}b"]
+azs_info = aws_tf.get_availability_zones(state="available")
+azs = azs_info.names[:2]
+
 
 kubernetes_version = "1.31"
 arch = "arm"
