@@ -15,7 +15,6 @@ on:
 
 env:
   PULUMI_CONFIG_PASSPHRASE: ""
-  AWS_DEFAULT_REGION: ${{ github.event.inputs.aws_region_id }}
   AWS_ACCESS_KEY_ID: ${{ github.event.inputs.aws_access_id }}
   AWS_SECRET_ACCESS_KEY: ${{ github.event.inputs.aws_secret_id }}
 
@@ -82,7 +81,7 @@ jobs:
           pulumi login --local && pulumi stack init us-west-2
           pulumi config set --stack us-west-2 clusterNumber ${{ matrix.clusters }}
           pulumi config set --stack us-west-2 instanceType t4g.medium
-          pulumi config set --stack us-west-2 region us-west-2
+          pulumi config set --stack us-west-2 aws:region us-west-2
           pulumi config set --stack us-west-2 poolId 0
 
       - name: Deployment of infrastructure
@@ -105,8 +104,8 @@ jobs:
           pulumi login --local && pulumi stack init us-east-1
           pulumi config set --stack us-east-1 clusterNumber ${{ matrix.clusters }}
           pulumi config set --stack us-east-1 instanceType t4g.medium
-          pulumi config set --stack us-east-1 region us-east-1
-          pulumi config set --stack us-west-2 poolId 1
+          pulumi config set --stack us-east-1 aws:region us-east-1
+          pulumi config set --stack us-east-1 poolId 1
 
       - name: Deployment of infrastructure
         if: steps.set_output.outputs.status == 'proceed'

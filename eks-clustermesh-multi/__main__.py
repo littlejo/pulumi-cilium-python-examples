@@ -4,7 +4,6 @@ from pulumi_command import local
 import littlejo_cilium as cilium
 import ipaddress
 import generate_ca
-import os
 
 
 def get_userdata(eks_name, api_server_url, ca, cidr):
@@ -441,8 +440,8 @@ def create_vpc(null_vpc, cidr=""):
     return vpc
 
 def create_roles(null_sec):
-    eks_role = IAMRole("eks-cp", trust_identity="eks.amazonaws.com", managed_policies=["AmazonEKSClusterPolicy"], parent=null_sec)
-    ec2_role = IAMRole("eks-ec2", trust_identity="ec2.amazonaws.com", managed_policies=["AmazonEC2ContainerRegistryReadOnly", "AmazonEKS_CNI_Policy", "AmazonEKSWorkerNodePolicy"], parent=null_sec)
+    eks_role = IAMRole(f"eks-cp-{region}", trust_identity="eks.amazonaws.com", managed_policies=["AmazonEKSClusterPolicy"], parent=null_sec)
+    ec2_role = IAMRole(f"eks-ec2-{region}", trust_identity="ec2.amazonaws.com", managed_policies=["AmazonEC2ContainerRegistryReadOnly", "AmazonEKS_CNI_Policy", "AmazonEKSWorkerNodePolicy"], parent=null_sec)
     ec2_role.create_profile()
     return eks_role, ec2_role
 
@@ -515,8 +514,7 @@ cluster_number = get_config_value("clusterNumber", 4, int)
 parallel = get_config_value("parallel", 3, int)
 instance_type = get_config_value("instanceType", "t4g.large")
 pool_id = get_config_value("poolId", 0, int)
-region = get_config_value("region", aws_tf.config.region)
-os.environ["AWS_DEFAULT_REGION"] = region
+region = aws_tf.config.region
 cluster_id_first = get_config_value("clusterIdFirstElement", pool_id*cluster_number, int) #To Manage pools of with different number of clusters
 
 cluster_ids = list(range(cluster_id_first, cluster_number + cluster_id_first))
