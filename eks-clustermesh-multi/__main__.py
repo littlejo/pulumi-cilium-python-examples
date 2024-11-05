@@ -389,7 +389,7 @@ class EKS:
        return self.cilium.get_cmesh_enable()
 
 def create_vpc(null_vpc, cidr=""):
-    vpc = VPC("private", azs=azs, parent=null_vpc, cidr=cidr)
+    vpc = VPC(f"private-{region}-{pool_id}", azs=azs, parent=null_vpc, cidr=cidr)
     vpc.create_subnets()
     vpc.create_internet_gateway()
     vpc.create_nat_gateway()
@@ -397,14 +397,14 @@ def create_vpc(null_vpc, cidr=""):
     return vpc
 
 def create_roles(null_sec):
-    eks_role = IAMRole(f"eks-cp-{region}", trust_identity="eks.amazonaws.com", managed_policies=["AmazonEKSClusterPolicy"], parent=null_sec)
-    ec2_role = IAMRole(f"eks-ec2-{region}", trust_identity="ec2.amazonaws.com", managed_policies=["AmazonEC2ContainerRegistryReadOnly", "AmazonEKS_CNI_Policy", "AmazonEKSWorkerNodePolicy"], parent=null_sec)
+    eks_role = IAMRole(f"eks-cp-{region}-{pool_id}", trust_identity="eks.amazonaws.com", managed_policies=["AmazonEKSClusterPolicy"], parent=null_sec)
+    ec2_role = IAMRole(f"eks-ec2-{region}-{pool_id}", trust_identity="ec2.amazonaws.com", managed_policies=["AmazonEC2ContainerRegistryReadOnly", "AmazonEKS_CNI_Policy", "AmazonEKSWorkerNodePolicy"], parent=null_sec)
     ec2_role.create_profile()
     return eks_role, ec2_role
 
 def create_sg(null_sec):
-    eks_sg = SecurityGroup("eks-cp", vpc_id=vpc.get_vpc_id(), description="EKS control plane security group", ingresses=[{"ip_protocol": "tcp", "cidr_ip": "0.0.0.0/0", "from_port": 443, "to_port": 443}], parent=null_sec)
-    ec2_sg = SecurityGroup("eks-worker", vpc_id=vpc.get_vpc_id(), description="EKS nodes security group", parent=null_sec, ingresses= [
+    eks_sg = SecurityGroup(f"eks-cp-{region}", vpc_id=vpc.get_vpc_id(), description="EKS control plane security group", ingresses=[{"ip_protocol": "tcp", "cidr_ip": "0.0.0.0/0", "from_port": 443, "to_port": 443}], parent=null_sec)
+    ec2_sg = SecurityGroup(f"eks-worker-{region}", vpc_id=vpc.get_vpc_id(), description="EKS nodes security group", parent=null_sec, ingresses= [
                                                               {"ip_protocol": "-1", "source_security_group_id": "self", "from_port": -1, "to_port": -1},
                                                               {"ip_protocol": "-1", "source_security_group_id": eks_sg.get_id(), "from_port": -1, "to_port": -1},
                                                               {"ip_protocol": "tcp", "cidr_ip": "0.0.0.0/0", "from_port": 30000, "to_port": 32767},
@@ -467,9 +467,9 @@ def get_config_value(key, default=None, value_type=str):
 #Main
 config = pulumi.Config()
 
-cluster_number = get_config_value("clusterNumber", 4, int)
+cluster_number = get_config_value("clusterNumber", 2, int)
 parallel = get_config_value("parallel", 3, int)
-instance_type = get_config_value("instanceType", "t4g.large")
+instance_type = get_config_value("instanceType", "t4g.medium")
 pool_id = get_config_value("poolId", 0, int)
 region = aws_tf.config.region
 cluster_id_first = get_config_value("clusterIdFirstElement", pool_id*cluster_number, int) #To Manage pools of with different number of clusters
@@ -515,5 +515,5 @@ cmesh_list, kubeconfig_global = create_eks(null_eks,
 
 pulumi.export("kubeconfig", kubeconfig_global.stdout)
 
-cilium_connect = Cilium(f"cmesh", config_path=f"./kubeconfig.yaml", context=f"eksCluster-{pool_id*cluster_number}", depends_on=kubeconfig_global)
-cilium_connect.cmesh_connection(f"cmesh-connect", parallel=parallel, destination_contexts=[f"eksCluster-{i}" for i in cluster_ids if i !=pool_id*cluster_number], depends_on=kubeconfig_global)
+#cilium_connect = Cilium(f"cmesh", config_path=f"./kubeconfig.yaml", context=f"eksCluster-{pool_id*cluster_number}", depends_on=kubeconfig_global)
+#cilium_connect.cmesh_connection(f"cmesh-connect", parallel=parallel, destination_contexts=[f"eksCluster-{i}" for i in cluster_ids if i !=pool_id*cluster_number], depends_on=kubeconfig_global)
