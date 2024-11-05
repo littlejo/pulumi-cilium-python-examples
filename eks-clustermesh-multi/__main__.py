@@ -374,6 +374,7 @@ class EKS:
                create=f"bash helper/creation-kubeconfig.sh {self.kubeconfig}",
                delete=f"rm -f {self.kubeconfig}",
                environment={
+                             "AWS_DEFAULT_REGION": region,
                              "KUBECONFIG": f"kubeconfig-{self.name}.yaml",
                              "serviceaccount": f"admin-{self.id}",
                              "cluster": self.name,
@@ -518,7 +519,7 @@ region = aws_tf.config.region
 cluster_id_first = get_config_value("clusterIdFirstElement", pool_id*cluster_number, int) #To Manage pools of with different number of clusters
 
 cluster_ids = list(range(cluster_id_first, cluster_number + cluster_id_first))
-vpc_cidr = f"172.31.{pool_id}.0/24"
+vpc_cidr = f"172.31.{pool_id*16}.0/20"
 
 azs_info = aws_tf.get_availability_zones(state="available")
 azs = azs_info.names[:2]
