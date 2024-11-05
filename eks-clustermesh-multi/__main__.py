@@ -59,55 +59,28 @@ class VPC:
        return self.vpc.id
 
    def get_subnet_ids(self):
-       return [self.private_subnet1.id, self.private_subnet2.id]
+       return [self.subnets["subnet-private-0"].id, self.subnets["subnet-private-1"].id]
 
    def create_subnets(self):
-       tags = {
-         "Name": f"subnet-public-{self.name}-1"
+       subnets_map = {
+         f"subnet-public-0": 0,
+         f"subnet-public-1": 1,
+         f"subnet-private-0": 2,
+         f"subnet-private-1": 3,
        }
-       self.subnet1 = aws_tf.ec2.Subnet(
-           f"vpc-subnet-public-{self.name}-1",
-           vpc_id=self.vpc.id,
-           cidr_block=self.subnet_cidr[0].with_prefixlen,
-           availability_zone=self.azs[0],
-           opts=pulumi.ResourceOptions(parent=self.vpc),
-           map_public_ip_on_launch=True,
-           tags=tags,
-       )
-       tags = {
-         "Name": f"subnet-public-{self.name}-2"
-       }
-       self.subnet2 = aws_tf.ec2.Subnet(
-           f"vpc-subnet-public-{self.name}-2",
-           vpc_id=self.vpc.id,
-           cidr_block=self.subnet_cidr[1].with_prefixlen,
-           availability_zone=self.azs[1],
-           opts=pulumi.ResourceOptions(parent=self.vpc),
-           map_public_ip_on_launch=True,
-           tags=tags,
-       )
-       tags = {
-         "Name": f"subnet-private-{self.name}-1"
-       }
-       self.private_subnet1 = aws_tf.ec2.Subnet(
-           f"vpc-private-subnet-{self.name}-1",
-           vpc_id=self.vpc.id,
-           cidr_block=self.subnet_cidr[2].with_prefixlen,
-           availability_zone=self.azs[0],
-           opts=pulumi.ResourceOptions(parent=self.vpc),
-           tags=tags,
-       )
-       tags = {
-         "Name": f"subnet-private-{self.name}-2"
-       }
-       self.private_subnet2 = aws_tf.ec2.Subnet(
-           f"vpc-private-subnet-{self.name}-2",
-           vpc_id=self.vpc.id,
-           cidr_block=self.subnet_cidr[3].with_prefixlen,
-           availability_zone=self.azs[1],
-           opts=pulumi.ResourceOptions(parent=self.vpc),
-           tags=tags,
-       )
+       self.subnets = {}
+
+       for name, index in subnets_map.items():
+           self.subnets[name] = aws_tf.ec2.Subnet(
+               name,
+               vpc_id=self.vpc.id,
+               cidr_block=self.subnet_cidr[index].with_prefixlen,
+               availability_zone=self.azs[index % 2],
+               opts=pulumi.ResourceOptions(parent=self.vpc),
+               map_public_ip_on_launch=(name.startswith("subnet-public-")),
+               tags={"Name": name + f"-{self.name}"},
+           )
+
    def create_nat_gateway(self):
        tags = {
          "Name": self.name
@@ -118,7 +91,7 @@ class VPC:
        )
        self.nat_gw = aws_tf.ec2.NatGateway("vpc-nat-gw",
            allocation_id=nat_eip.id,
-           subnet_id=self.subnet1,
+           subnet_id=self.subnets["subnet-public-0"],
 	   tags = tags,
            opts = pulumi.ResourceOptions(parent=nat_eip)
        )
@@ -146,13 +119,13 @@ class VPC:
        )
 
        aws_tf.ec2.RouteTableAssociation(f"vpc-rt-assoc-public-{self.name}-1",
-                                        subnet_id=self.subnet1,
+                                        subnet_id=self.subnets["subnet-public-0"],
                                         route_table_id=self.rt.id,
                                         opts=pulumi.ResourceOptions(parent=self.rt)
        )
 
        aws_tf.ec2.RouteTableAssociation(f"vpc-rt-assoc-public-{self.name}-2",
-                                        subnet_id=self.subnet2,
+                                        subnet_id=self.subnets["subnet-public-1"],
                                         route_table_id=self.rt.id,
                                         opts=pulumi.ResourceOptions(parent=self.rt)
        )
@@ -175,12 +148,12 @@ class VPC:
                                           )
        aws_tf.ec2.RouteTableAssociation(f"vpc-rt-assoc-private-{self.name}-1",
                                                   route_table_id=self.rt_pv.id,
-                                                  subnet_id=self.private_subnet1,
+                                                  subnet_id=self.subnets["subnet-private-0"],
                                                   opts=pulumi.ResourceOptions(parent=self.rt_pv))
 
        aws_tf.ec2.RouteTableAssociation(f"vpc-rt-assoc-private-{self.name}-2",
                                                   route_table_id=self.rt_pv.id,
-                                                  subnet_id=self.private_subnet2,
+                                                  subnet_id=self.subnets["subnet-private-1"],
                                                   opts=pulumi.ResourceOptions(parent=self.rt_pv))
 
 
