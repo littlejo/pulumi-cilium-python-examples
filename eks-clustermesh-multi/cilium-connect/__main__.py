@@ -1,8 +1,6 @@
 import pulumi
 import pulumi_aws as aws_tf
-from pulumi_command import local
 import littlejo_cilium as cilium
-import json
 import yaml
 
 class Cilium:
@@ -71,7 +69,7 @@ config = pulumi.Config()
 
 parallel = get_config_value("parallel", 3, int)
 cluster_number = get_config_value("clusterNumber", 4, int)
-cluster_ids = list(range(0, cluster_number-1))
+cluster_ids = list(range(0, cluster_number))
 
 stacks = [
         "organization/eks-cilium-cmesh/dev",
