@@ -409,6 +409,7 @@ def create_sg(null_sec):
                                                               {"ip_protocol": "-1", "source_security_group_id": eks_sg.get_id(), "from_port": -1, "to_port": -1},
                                                               {"ip_protocol": "tcp", "cidr_ip": "0.0.0.0/0", "from_port": 30000, "to_port": 32767},
                                                               {"ip_protocol": "icmp", "cidr_ip": "0.0.0.0/0", "from_port": -1, "to_port": -1},
+                                                              {"ip_protocol": "-1", "cidr_ip": "172.31.0.0/16", "from_port": -1, "to_port": -1},
                                                              ])
     return eks_sg, ec2_sg
 
