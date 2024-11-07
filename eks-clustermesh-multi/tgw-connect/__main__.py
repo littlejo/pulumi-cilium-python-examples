@@ -25,7 +25,7 @@ cidr_blocks = [
     "172.31.80.0/20",
     "172.31.96.0/20",
 ]
-cidr_blocks = cidr_blocks[:pool_number]
+cidr_blocks = cidr_blocks[:len(aws_regions)]
 
 def create_aws_connection(i, region="us-east-1"):
     aws = aws_tf.Provider(f"aws-{region}-{i}", region=region, opts=pulumi.ResourceOptions(parent=transit_gateway))
