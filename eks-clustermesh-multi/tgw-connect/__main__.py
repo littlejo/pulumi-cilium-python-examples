@@ -63,5 +63,6 @@ transit_gateway = aws_tf.ec2transitgateway.TransitGateway("tgw")
 #    resource_share_arn=resource_share.arn,
 #    resource_arn=transit_gateway.arn)
 
-create_aws_connection(0)
-create_aws_connection(1)
+
+for pool in list(range(0, pool_number)):
+    create_aws_connection(pool)
