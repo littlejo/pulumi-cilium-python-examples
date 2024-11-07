@@ -13,7 +13,7 @@ def get_config_value(key, default=None, value_type=str):
 
 #Main
 config = pulumi.Config()
-pool_number = get_config_value("poolNumber", 7, int)
+aws_regions = get_config_value("awsRegions", "us-east-1,us-east-1").split(",")
 
 #VPC CIDR BLOCKS ALREADY CREATED
 cidr_blocks = [
@@ -64,5 +64,5 @@ transit_gateway = aws_tf.ec2transitgateway.TransitGateway("tgw")
 #    resource_arn=transit_gateway.arn)
 
 
-for pool in list(range(0, pool_number)):
-    create_aws_connection(pool)
+for i, region in enumerate(aws_regions):
+    create_aws_connection(i, region=region)
