@@ -300,8 +300,6 @@ class EKS:
    def create_ec2(self):
        tags_dict = {
                      'Name': f"ec2-{self.name}",
-                     f'kubernetes.io/cluster/{self.name}': "owned",
-                     f'k8s.io/cluster/{self.name}': "owned",
                    }
 
        user_data = get_userdata(self.cluster.name, self.cluster.endpoint, self.cluster.certificate_authority["data"], self.cluster.kubernetes_network_config.service_ipv4_cidr)
