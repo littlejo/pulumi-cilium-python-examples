@@ -27,8 +27,8 @@ cidr_blocks = [
 ]
 cidr_blocks = cidr_blocks[:len(aws_regions)]
 
-def create_aws_connection(i, region="us-east-1"):
-    aws = aws_tf.Provider(f"aws-{region}-{i}", region=region, opts=pulumi.ResourceOptions(parent=transit_gateway))
+def create_aws_connection(i, parent, region="us-east-1"):
+    aws = aws_tf.Provider(f"aws-{region}-{i}", region=region, opts=pulumi.ResourceOptions(parent=parent))
 
     ## Datasources:
     vpc = aws_tf.ec2.get_vpc(tags={"Name": f"private-{region}-{i}"}, opts=pulumi.InvokeOptions(provider=aws))
@@ -48,21 +48,25 @@ def create_aws_connection(i, region="us-east-1"):
                 transit_gateway_id=transit_gateway.id,
                 opts=pulumi.ResourceOptions(parent=tgw_attachment, provider=aws))
 
+def create_ram():
+    current = aws_tf.get_caller_identity()
+    resource_share = aws_tf.ram.ResourceShare("tgw-resource-share",
+        allow_external_principals=True, opts=pulumi.ResourceOptions(parent=transit_gateway))
+
+    resource_association = aws_tf.ram.PrincipalAssociation("tgw-principal-association",
+        resource_share_arn=resource_share.arn,
+        principal=current.account_id, opts=pulumi.ResourceOptions(parent=resource_share))
+
+    tgw_association = aws_tf.ram.ResourceAssociation("tgw-association",
+        resource_share_arn=resource_share.arn,
+        resource_arn=transit_gateway.arn, opts=pulumi.ResourceOptions(parent=resource_share))
+    return tgw_association
+
 # Main
 transit_gateway = aws_tf.ec2transitgateway.TransitGateway("tgw")
-# RAM
-#resource_share = aws_tf.ram.ResourceShare("example-resource-share",
-#    allow_external_principals=True)
-#
-#resource_association = aws_tf.ram.PrincipalAssociation("example-principal-association",
-#    resource_share_arn=resource_share.arn,
-#    principal=peer_account_id)
 
-# Ajouter la Transit Gateway au partage de ressources
-#tgw_association = aws_tf.ram.ResourceAssociation("example-tgw-association",
-#    resource_share_arn=resource_share.arn,
-#    resource_arn=transit_gateway.arn)
-
+#parent = create_ram()
+parent = transit_gateway
 
 for i, region in enumerate(aws_regions):
-    create_aws_connection(i, region=region)
+    create_aws_connection(i, parent, region=region)
