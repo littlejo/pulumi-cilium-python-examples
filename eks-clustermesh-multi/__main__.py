@@ -3,7 +3,8 @@ import pulumi_aws as aws_tf
 from pulumi_command import local
 import littlejo_cilium as cilium
 import ipaddress
-import generate_ca
+import yaml
+import json
 
 
 def get_userdata(eks_name, api_server_url, ca, cidr):
@@ -414,6 +415,7 @@ def create_sg(null_sec):
 def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids, ec2_profile_name, pool_id):
     cmesh_list = []
     kubeconfigs = []
+    eks_clusters = []
     for i in cluster_ids:
         cilium_sets = [
                              f"cluster.name=cmesh{i+1}",
@@ -443,15 +445,12 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
         eks_cluster.add_dns_addon()
         cmesh_list += eks_cluster.get_cilium_cmesh()
         kubeconfigs += [ eks_cluster.get_kubeconfig() ]
+        eks_clusters += [ eks_cluster.cluster ]
 
-    kubeconfig_global = local.Command("cmd-kubeconfig-connect",
-            create="kubectl config view --raw | tee ./kubeconfig.yaml",
-            delete=f"rm -f kubeconfig.yaml",
-            environment={"KUBECONFIG": ":".join(kubeconfigs)},
-            opts=pulumi.ResourceOptions(depends_on=cmesh_list),
-        )
+    k8s_config = MergeKubeconfigs("mergedKubeconfig", kubeconfigs, opts=pulumi.ResourceOptions(depends_on=eks_clusters, parent=null_eks))
 
-    return cmesh_list, kubeconfig_global
+    return k8s_config.kubeconfig
+
 
 def get_config_value(key, default=None, value_type=str):
     try:
@@ -462,6 +461,50 @@ def get_config_value(key, default=None, value_type=str):
     except ValueError:
         print(f"Warning: Could not convert config '{key}' to {value_type.__name__}, using default.")
         return default
+
+class MergeKubeconfigs(pulumi.ComponentResource):
+    def __init__(self, name, files, opts=None):
+        super().__init__('custom:resource:MergeKubeconfigs', name, {}, opts)
+
+        contents = []
+        try:
+            for f in files:
+                 contents += [open(f, "r").read()]
+            kubeconfig = merge_kubeconfigs(contents, "./kubeconfig")
+        except FileNotFoundError:
+            kubeconfig = ""
+
+
+        self.kubeconfig = pulumi.Output.secret(kubeconfig)
+
+        # Enregistre la ressource et spécifie la sortie
+        self.register_outputs({"kubeconfig": self.kubeconfig})
+
+def merge_kubeconfigs(files, output_path):
+    merged_config = {
+        "apiVersion": "v1",
+        "kind": "Config",
+        "preferences": {},
+        "clusters": [],
+        "contexts": [],
+        "users": [],
+        "current-context": None,
+    }
+
+    for i, f in enumerate(files):
+        config = yaml.safe_load(f)
+
+        merged_config["clusters"].extend(config.get("clusters", []))
+        merged_config["contexts"].extend(config.get("contexts", []))
+        merged_config["users"].extend(config.get("users", []))
+
+        if i == 0 and "current-context" in config:
+            merged_config["current-context"] = config["current-context"]
+
+    with open(output_path, 'w') as f_out:
+        yaml.safe_dump(merged_config, f_out, default_flow_style=False)
+    return json.dumps(merged_config)
+
 
 #Main
 config = pulumi.Config()
@@ -506,14 +549,14 @@ null_eks = local.Command(f"cmd-null-eks")
 vpc = create_vpc(null_vpc, cidr=vpc_cidr)
 eks_role, ec2_role = create_roles(null_sec)
 eks_sg, ec2_sg = create_sg(null_sec)
-cmesh_list, kubeconfig_global = create_eks(null_eks,
-                                           eks_role.get_arn(),
-                                           vpc.get_subnet_ids(),
-                                           [eks_sg.get_id()],
-                                           ec2_role.get_arn(),
-                                           [ec2_sg.get_id()],
-                                           ec2_role.get_profile_name(),
-                                           pool_id,
-                                          )
+kubeconfig = create_eks(null_eks,
+            eks_role.get_arn(),
+            vpc.get_subnet_ids(),
+            [eks_sg.get_id()],
+            ec2_role.get_arn(),
+            [ec2_sg.get_id()],
+            ec2_role.get_profile_name(),
+            pool_id,
+           )
 
-pulumi.export("kubeconfig", kubeconfig_global.stdout)
+pulumi.export("kubeconfig", kubeconfig)
