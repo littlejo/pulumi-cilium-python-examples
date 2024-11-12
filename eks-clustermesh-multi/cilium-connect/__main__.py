@@ -71,18 +71,10 @@ parallel = get_config_value("parallel", 3, int)
 cluster_number = get_config_value("clusterNumber", 4, int)
 vpc_number = get_config_value("vpcNumber", 2, int)
 cluster_ids = list(range(0, cluster_number))
+stack_prefix = get_config_value("stackPrefix", "eks-cilium-cmesh/dev")
+cluster_ids = list(range(cluster_id_first, cluster_number + cluster_id_first))
 
-stacks = [
-        "organization/eks-cilium-cmesh/dev",
-        "organization/eks-cilium-cmesh/dev2",
-        "organization/eks-cilium-cmesh/dev3",
-        "organization/eks-cilium-cmesh/dev4",
-        "organization/eks-cilium-cmesh/dev5",
-        "organization/eks-cilium-cmesh/dev6",
-        "organization/eks-cilium-cmesh/dev7",
-        ]
-
-stacks = stacks[:vpc_number]
+stacks = [ f"organization/{stack_prefix}{id}" for id in list(range(vpc_number)) ]
 
 kubeconfig = "kubeconfig-py.yaml"
 
