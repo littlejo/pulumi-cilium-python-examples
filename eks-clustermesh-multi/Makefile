@@ -14,6 +14,7 @@ deploy_stack:
 	pulumi up --stack $(STACK) -p $(PULUMI_PARALLEL)
 
 destroy:
+	bash ./remove-state.sh
 	pulumi down -p $(PULUMI_PARALLEL)
 
 dev0 dev1 dev2 dev3 dev4 dev5 dev6:
