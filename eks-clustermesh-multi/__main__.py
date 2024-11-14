@@ -3,8 +3,6 @@ import pulumi_aws as aws_tf
 from pulumi_command import local
 import littlejo_cilium as cilium
 import ipaddress
-import generate_ca
-
 
 def get_userdata(eks_name, api_server_url, ca, cidr):
     combined = pulumi.Output.all(eks_name, api_server_url, ca, cidr)
