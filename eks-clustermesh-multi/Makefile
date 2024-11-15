@@ -19,3 +19,6 @@ destroy:
 
 dev0 dev1 dev2 dev3 dev4 dev5 dev6:
 	$(MAKE) deploy_stack STACK=$@ POOL_ID=$$(echo $@ | sed 's/dev//') REGION=$(AWS_DEFAULT_REGION)
+
+rec:
+	asciinema rec $(AWS_DEFAULT_REGION).cast
