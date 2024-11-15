@@ -438,7 +438,7 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
         #eks_cluster.add_cilium(config_path=eks_cluster.get_kubeconfig(), version="1.16.3", parent=eks_cluster.get_kubeconfig_sa(), sets=cilium_sets, cmesh_service="NodePort", depends_on=[eks_cluster.get_ec2()])
         #eks_cluster.add_dns_addon()
         #cmesh_list += eks_cluster.get_cilium_cmesh()
-        kubeconfigs += [ eks_cluster.get_kubeconfig() ]
+        #kubeconfigs += [ eks_cluster.get_kubeconfig() ]
 
     #kubeconfig_global = local.Command("cmd-kubeconfig-connect",
     #        create="kubectl config view --raw | tee ./kubeconfig.yaml",
