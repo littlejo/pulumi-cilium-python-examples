@@ -493,9 +493,9 @@ ami = aws_tf.ec2.get_ami(
     )
 
 stack = "organization/eks-cilium-cmesh-init/generate-ca"
-ref = pulumi.StackReference(stack)
-ca_crt = ref.get_output("ca_crt")
-ca_key = ref.get_output("ca_key")
+#ref = pulumi.StackReference(stack)
+#ca_crt = ref.get_output("ca_crt")
+#ca_key = ref.get_output("ca_key")
 
 null_sec = local.Command(f"cmd-null-security")
 null_vpc = local.Command(f"cmd-null-vpc")
