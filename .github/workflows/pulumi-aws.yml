@@ -90,6 +90,7 @@ jobs:
           command: up
           stack-name: us-west-2
           cloud-url: file://~
+          parallel: 74
 
       - name: Destroy of infrastructure
         uses: pulumi/actions@v5
