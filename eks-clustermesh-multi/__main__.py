@@ -333,8 +333,6 @@ class EKS:
                              "ca": self.cluster.certificate_authority["data"],
                              "server": self.cluster.endpoint,
                              "account": self.cluster.arn,
-                             "crt_cilium": ca_crt,
-                             "key_cilium": ca_key,
 
        #                      "token": auth.token,
                            },
@@ -435,7 +433,7 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
                           parent=null_eks)
         eks_cluster.add_node_access()
         eks_cluster.add_kubeproxy_addon()
-        eks_cluster.create_kubeconfig_sa()
+        #eks_cluster.create_kubeconfig_sa()
         #eks_cluster.create_ec2()
         #eks_cluster.add_cilium(config_path=eks_cluster.get_kubeconfig(), version="1.16.3", parent=eks_cluster.get_kubeconfig_sa(), sets=cilium_sets, cmesh_service="NodePort", depends_on=[eks_cluster.get_ec2()])
         #eks_cluster.add_dns_addon()
