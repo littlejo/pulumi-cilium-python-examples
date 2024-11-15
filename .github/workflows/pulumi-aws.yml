@@ -28,6 +28,14 @@ jobs:
           - ./eks-clustermesh-multi
         clusters:
           - 73
+          - 73
+          - 73
+          - 73
+          - 73
+          - 73
+          - 73
+          - 73
+          - 73
     name: Cluster Mesh EKS
     runs-on: ubuntu-latest
     defaults:
@@ -90,7 +98,7 @@ jobs:
           command: up
           stack-name: us-west-2
           cloud-url: file://~
-          parallel: 74
+          parallel: 75
 
       - name: Destroy of infrastructure
         uses: pulumi/actions@v5
@@ -100,3 +108,4 @@ jobs:
           command: destroy
           stack-name: us-west-2
           cloud-url: file://~
+          parallel: 75
