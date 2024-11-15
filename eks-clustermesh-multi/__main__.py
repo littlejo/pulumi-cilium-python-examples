@@ -474,7 +474,10 @@ cluster_id_first = get_config_value("clusterIdFirstElement", pool_id*cluster_num
 cluster_ids = list(range(cluster_id_first, cluster_number + cluster_id_first))
 vpc_cidr = f"172.31.{pool_id*16}.0/20"
 
-azs_info = aws_tf.get_availability_zones(state="available")
+azs_info = aws_tf.get_availability_zones(state="available", filters=[{
+    "name": "opt-in-status",
+    "values": ["opt-in-not-required"],
+}])
 azs = azs_info.names[:2]
 
 kubernetes_version = "1.31"

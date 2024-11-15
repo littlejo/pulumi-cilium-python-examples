@@ -10,3 +10,6 @@ cilium-connect:
 	pulumi config set --stack cilium-connect parallel $(PARALLEL)
 	pulumi config set --stack cilium-connect vpcNumber $(VPC_NUMBER)
 	pulumi up --stack cilium-connect
+
+rec:
+	asciinema rec cilium-connect.cast
