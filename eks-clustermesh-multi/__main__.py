@@ -436,20 +436,20 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
         eks_cluster.add_node_access()
         eks_cluster.add_kubeproxy_addon()
         eks_cluster.create_kubeconfig_sa()
-        eks_cluster.create_ec2()
-        eks_cluster.add_cilium(config_path=eks_cluster.get_kubeconfig(), version="1.16.3", parent=eks_cluster.get_kubeconfig_sa(), sets=cilium_sets, cmesh_service="NodePort", depends_on=[eks_cluster.get_ec2()])
-        eks_cluster.add_dns_addon()
-        cmesh_list += eks_cluster.get_cilium_cmesh()
+        #eks_cluster.create_ec2()
+        #eks_cluster.add_cilium(config_path=eks_cluster.get_kubeconfig(), version="1.16.3", parent=eks_cluster.get_kubeconfig_sa(), sets=cilium_sets, cmesh_service="NodePort", depends_on=[eks_cluster.get_ec2()])
+        #eks_cluster.add_dns_addon()
+        #cmesh_list += eks_cluster.get_cilium_cmesh()
         kubeconfigs += [ eks_cluster.get_kubeconfig() ]
 
-    kubeconfig_global = local.Command("cmd-kubeconfig-connect",
-            create="kubectl config view --raw | tee ./kubeconfig.yaml",
-            delete=f"rm -f kubeconfig.yaml",
-            environment={"KUBECONFIG": ":".join(kubeconfigs)},
-            opts=pulumi.ResourceOptions(depends_on=cmesh_list),
-        )
+    #kubeconfig_global = local.Command("cmd-kubeconfig-connect",
+    #        create="kubectl config view --raw | tee ./kubeconfig.yaml",
+    #        delete=f"rm -f kubeconfig.yaml",
+    #        environment={"KUBECONFIG": ":".join(kubeconfigs)},
+    #        opts=pulumi.ResourceOptions(depends_on=cmesh_list),
+    #    )
 
-    return cmesh_list, kubeconfig_global
+    #return cmesh_list, kubeconfig_global
 
 def get_config_value(key, default=None, value_type=str):
     try:
@@ -504,7 +504,7 @@ null_eks = local.Command(f"cmd-null-eks")
 vpc = create_vpc(null_vpc, cidr=vpc_cidr)
 eks_role, ec2_role = create_roles(null_sec)
 eks_sg, ec2_sg = create_sg(null_sec)
-cmesh_list, kubeconfig_global = create_eks(null_eks,
+create_eks(null_eks,
                                            eks_role.get_arn(),
                                            vpc.get_subnet_ids(),
                                            [eks_sg.get_id()],
@@ -514,4 +514,4 @@ cmesh_list, kubeconfig_global = create_eks(null_eks,
                                            pool_id,
                                           )
 
-pulumi.export("kubeconfig", kubeconfig_global.stdout)
+#pulumi.export("kubeconfig", kubeconfig_global.stdout)
