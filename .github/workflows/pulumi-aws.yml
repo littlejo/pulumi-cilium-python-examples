@@ -27,9 +27,7 @@ jobs:
         dir:
           - ./eks-clustermesh-multi
         clusters:
-          - 2
-          - 3
-          - 4
+          - 73
     name: Cluster Mesh EKS
     runs-on: ubuntu-latest
     defaults:
@@ -99,5 +97,5 @@ jobs:
         with:
           work-dir: ${{ matrix.dir }}
           command: destroy
-          stack-name: dev
+          stack-name: us-west-2
           cloud-url: file://~
