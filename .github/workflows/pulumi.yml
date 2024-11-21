@@ -56,6 +56,13 @@ jobs:
 
       - uses: pulumi/actions@v5
 
+      - name: Clean disk
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
       - name: Create stack
         run: pulumi login --local && pulumi stack init dev && pulumi config set --stack dev clusterNumber ${{ matrix.clusters }}
 
@@ -65,6 +72,7 @@ jobs:
           command: up
           stack-name: dev
           cloud-url: file://~
+          #parallel: 2
 
       - name: Check secrets sizes
         run: |
