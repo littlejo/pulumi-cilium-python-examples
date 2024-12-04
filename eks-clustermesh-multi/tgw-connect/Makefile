@@ -1,4 +1,4 @@
-AWS_REGIONS="us-east-1,us-west-2"
+AWS_REGIONS="eu-west-3,eu-north-1,ca-central-1,sa-east-1,ap-northeast-1,ap-southeast-2,af-south-1"
 
 tgw-connect:
 	pulumi login $(BUCKET_S3)
