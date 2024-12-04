@@ -54,12 +54,12 @@ jobs:
       - name: Installing dependencies 📦️
         run: pip install -r requirements.txt
 
-      - uses: pulumi/actions@v5
+      - uses: pulumi/actions@v6
 
       - name: Create stack
         run: pulumi login --local && pulumi stack init dev && pulumi config set --stack dev clusterNumber ${{ matrix.clusters }}
 
-      - uses: pulumi/actions@v5
+      - uses: pulumi/actions@v6
         with:
           work-dir: ${{ matrix.dir }}
           command: up
@@ -89,7 +89,7 @@ jobs:
             echo "Cluster Connectivity test kind-cmesh0 and kind-cmesh1"
           cilium connectivity test --context kind-cmesh0 --multi-cluster kind-cmesh1
 
-      - uses: pulumi/actions@v5
+      - uses: pulumi/actions@v6
         with:
           work-dir: ${{ matrix.dir }}
           command: destroy
