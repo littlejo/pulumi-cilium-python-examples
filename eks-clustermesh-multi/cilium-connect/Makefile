@@ -1,7 +1,6 @@
 CLUSTER_NUMBER=4
 VPC_NUMBER=2
 PARALLEL=3
-INSTANCE_TYPE="t4g.medium"
 
 cilium-connect:
 	pulumi login $(BUCKET_S3)
