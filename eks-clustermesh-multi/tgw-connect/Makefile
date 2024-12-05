@@ -1,4 +1,5 @@
 AWS_REGIONS="eu-west-3,eu-north-1,ca-central-1,sa-east-1,ap-northeast-1,ap-southeast-2,af-south-1"
+VIDEO_FILE=tgw-connect.cast
 
 tgw-connect:
 	pulumi login $(BUCKET_S3)
@@ -11,4 +12,7 @@ destroy:
 	pulumi down --stack tgw-connect
 
 rec:
-	asciinema rec tgw.cast
+	asciinema rec $(VIDEO_FILE)
+
+gzip:
+	gzip $(VIDEO_FILE)

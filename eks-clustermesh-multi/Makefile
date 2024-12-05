@@ -22,3 +22,6 @@ dev0 dev1 dev2 dev3 dev4 dev5 dev6:
 
 rec:
 	asciinema rec $(AWS_DEFAULT_REGION).cast
+
+gzip:
+	gzip $(AWS_DEFAULT_REGION).cast
