@@ -16,3 +16,6 @@ rec:
 
 gzip:
 	gzip $(VIDEO_FILE)
+
+check:
+	KUBECONFIG=./kubeconfig-py.yaml check-cilium.sh
