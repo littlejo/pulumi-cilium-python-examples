@@ -35,7 +35,7 @@ jobs:
         working-directory: ${{ matrix.dir }}
     steps:
       - uses: actions/checkout@v4
-      - uses: cilium/cilium-cli@404d52692f62eebb7211fdacd114848995ada1b7
+      - uses: cilium/cilium-cli@223c743a1e104268bf790bcad8a8f48b03fa3530
         with:
           skip-build: true
           release-version: v0.16.10
