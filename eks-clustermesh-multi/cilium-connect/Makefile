@@ -1,6 +1,6 @@
-CLUSTER_NUMBER=14
+CLUSTER_NUMBER=511
 VPC_NUMBER=7
-PARALLEL=2
+PARALLEL=62
 VIDEO_FILE="cilium-connect.cast"
 
 cilium-connect:
