@@ -10,11 +10,25 @@ function create_kubeconfig(){
 	kubectl config use-context "$context" >/dev/null
 }
 
+log_info() {
+  echo "[INFO] $1"
+}
+
 export KUBECONFIG=$(mktemp)
 
 ca_crt="$(mktemp)"; echo "$ca" | base64 -d > $ca_crt
 
-export token=$(aws eks get-token --cluster-name $cluster | jq -r .status.token)
+token_tmp=""
+while [ -z "$token_tmp" ]; do
+  token_tmp=$(aws eks get-token --cluster-name $cluster | jq -r .status.token)
+
+  if [ -z "$token_tmp" ]; then
+    log_info "aws token not found, retrying..."
+    sleep 5
+  fi
+done
+
+export token=$token_tmp
 create_kubeconfig
 
 kubectl create sa $serviceaccount -n $namespace
@@ -31,7 +45,17 @@ metadata:
 type: kubernetes.io/service-account-token
 EOF
 
-export token=$(kubectl get secret $serviceaccount -n $namespace -o "jsonpath={.data.token}" | base64 -d)
+token_tmp=""
+while [ -z "$token_tmp" ]; do
+  token_tmp=$(kubectl get secret $serviceaccount -n $namespace -o "jsonpath={.data.token}" | base64 -d)
+
+  if [ -z "$token_tmp" ]; then
+    log_info "token not found, retrying..."
+    sleep 5
+  fi
+done
+
+export token=$token_tmp
 export account=$serviceaccount
 
 export KUBECONFIG=$kubeconfig
