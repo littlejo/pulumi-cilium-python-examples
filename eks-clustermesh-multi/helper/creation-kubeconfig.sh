@@ -31,8 +31,8 @@ done
 export token=$token_tmp
 create_kubeconfig
 
-kubectl create sa $serviceaccount -n $namespace
-kubectl create clusterrolebinding $serviceaccount --serviceaccount=$namespace:$serviceaccount --clusterrole=cluster-admin
+kubectl create sa $serviceaccount -n $namespace || log_info "sa already created"
+kubectl create clusterrolebinding $serviceaccount --serviceaccount=$namespace:$serviceaccount --clusterrole=cluster-admin || log_info "clusterrolebinding already created"
 
 kubectl apply -f - <<EOF
 apiVersion: v1
