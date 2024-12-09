@@ -4,6 +4,16 @@ from pulumi_command import local
 import littlejo_cilium as cilium
 import ipaddress
 
+def validate_cidr(cidr: str):
+    try:
+        ipaddress.ip_network(cidr, strict=True)
+    except ValueError as e:
+        raise ValueError(f"invalid CIDR: {cidr}. Error: {e}")
+
+def validate_cluster_id(cluster_id: str):
+    if cluster_id > 511:
+        raise ValueError(f"invalid cluster id: {cluster_id}")
+
 def get_userdata(eks_name, api_server_url, ca, cidr):
     combined = pulumi.Output.all(eks_name, api_server_url, ca, cidr)
     return combined.apply(lambda vars: f"""Content-Type: multipart/mixed; boundary="MIMEBOUNDARY"
@@ -413,15 +423,19 @@ def create_eks(null_eks, role_arn, subnet_ids, sg_ids, ec2_role_arn, ec2_sg_ids,
     cmesh_list = []
     kubeconfigs = []
     for i in cluster_ids:
+        cidr = f"10.{pool_id}.{i % 256}.0/24"
+        cluster_id = i+1
+        validate_cidr(cidr)
+        validate_cluster_id(cluster_id)
         cilium_sets = [
-                             f"cluster.name=cmesh{i+1}",
-                             f"cluster.id={i+1}",
+                             f"cluster.name=cmesh{cluster_id}",
+                             f"cluster.id={cluster_id}",
                              f"egressMasqueradeInterfaces={interfaces}",
                              f"operator.replicas=1",
                              f'ipam.mode=cluster-pool',
                              f'routingMode=tunnel',
                              f'clustermesh.maxConnectedClusters=511',
-                             'ipam.operator.clusterPoolIPv4PodCIDRList={10.%s.%s.0/24}' % (pool_id, i % 256),
+                             'ipam.operator.clusterPoolIPv4PodCIDRList={%s}' % cidr,
         ]
         eks_cluster = EKS(f"eksCluster-{i}",
                           id=i,
@@ -473,6 +487,7 @@ cluster_id_first = get_config_value("clusterIdFirstElement", pool_id*cluster_num
 
 cluster_ids = list(range(cluster_id_first, cluster_number + cluster_id_first))
 vpc_cidr = f"172.31.{pool_id*16}.0/20"
+validate_cidr(vpc_cidr)
 
 azs_info = aws_tf.get_availability_zones(state="available", filters=[{
     "name": "opt-in-status",
