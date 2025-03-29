@@ -84,7 +84,7 @@ jobs:
             echo "Cluster: kind-cmesh$i"
             helm get values cilium -n kube-system --kube-context=kind-cmesh$i
             cilium status --context=kind-cmesh$i --wait
-            cilium clustermesh status --context=kind-cmesh$i --wait
+            cilium clustermesh status --context=kind-cmesh$i --wait -o json
           done
             echo "Cluster Connectivity test kind-cmesh0 and kind-cmesh1"
           cilium connectivity test --context kind-cmesh0 --multi-cluster kind-cmesh1
