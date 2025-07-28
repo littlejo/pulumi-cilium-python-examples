@@ -77,7 +77,7 @@ jobs:
         if: steps.set_output.outputs.status == 'proceed'
         run: pip install -r requirements.txt
 
-      - uses: pulumi/actions@v5
+      - uses: pulumi/actions@v6
         if: steps.set_output.outputs.status == 'proceed'
 
       - name: Create stack
@@ -89,7 +89,7 @@ jobs:
 
       - name: Deployment of infrastructure
         if: steps.set_output.outputs.status == 'proceed'
-        uses: pulumi/actions@v5
+        uses: pulumi/actions@v6
         with:
           work-dir: ${{ matrix.dir }}
           command: up
@@ -121,7 +121,7 @@ jobs:
           done
 
       - name: Destroy of infrastructure
-        uses: pulumi/actions@v5
+        uses: pulumi/actions@v6
         if: steps.set_output.outputs.status == 'proceed'
         with:
           work-dir: ${{ matrix.dir }}
