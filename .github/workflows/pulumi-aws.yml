@@ -61,7 +61,7 @@ jobs:
           release-version: v0.16.14
       - name: Setup Python ✨
         if: steps.set_output.outputs.status == 'proceed'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.11
 
